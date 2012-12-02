@@ -7,6 +7,10 @@ Vex.Flow.TabDiv = function(sel) {
   if (arguments.length > 0) this.init(sel);
 }
 
+// Alias for use with Vex.Flow.Document
+if (! Vex.Flow.Backend) Vex.Flow.Backend = {};
+Vex.Flow.Backend.TabDiv = Vex.Flow.TabDiv;
+
 Vex.Flow.TabDiv.SEL = ".vex-tabdiv";
 Vex.Flow.TabDiv.ERROR_NOCANVAS =
   "<b>This browser does not support HTML5 Canvas</b><br/>" +

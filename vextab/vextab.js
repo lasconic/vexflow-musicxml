@@ -100,6 +100,17 @@ Vex.Flow.VexTab.prototype.init = function() {
 }
 
 /**
+ * Class method.
+ * Returns true if the passed-in code appears to be valid VexTab.
+ * Used when automatically detecting VexTab.
+ *
+ * @return {Boolean} True if code looks like valid VexTab.
+ */
+Vex.Flow.VexTab.appearsValid = function(code) {
+  return /^\s*tabstave/.search(code) != -1;
+}
+
+/**
  * Returns true if the passed-in code parsed without errors.
  *
  * @return {Boolean} True if code is error-free.
@@ -1147,4 +1158,24 @@ Vex.Flow.VexTab.prototype.genBar = function() {
   if (this.state.current_stave == -1) this.genTabStave();
   this.elements.tabnotes[this.state.current_stave].push(new Vex.Flow.BarNote());
   this.elements.notes[this.state.current_stave].push(new Vex.Flow.BarNote());
+}
+
+/**
+ * Number of "measures" for a Document (actually number of staves).
+ *
+ * @return {Number} Number of measures
+ */
+Vex.Flow.VexTab.prototype.getNumberOfMeasures = function() {
+  return this.elements.staves.length;
+}
+
+/**
+ * Create the ith measure from this.elements.staves[i]
+ *
+ * @return {Vex.Flow.Measure} ith measure as a Measure object
+ */
+Vex.Flow.VexTab.prototype.getMeasure = function(i) {
+  var measure = new Vex.Flow.Measure({num_beats: 4, beat_value: 4});
+  // FIXME: Initialize measure with the correct information
+  return measure;
 }

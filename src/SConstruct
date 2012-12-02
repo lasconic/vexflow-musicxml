@@ -58,6 +58,9 @@ vexflow_sources = [
     "tremolo.js",
     "tuplet.js",
     "boundingbox.js"
+    "measure.js",
+    "musicxml.js",
+    "document.js"
     ]
 
 Import('dbg opt')
