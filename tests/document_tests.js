@@ -7,10 +7,35 @@ Vex.Flow.Test.Document = {};
 
 Vex.Flow.Test.Document.Start = function() {
   module("Document");
+  Vex.Flow.Test.runTest("Auto-generated Measure Test",
+                        Vex.Flow.Test.Document.measure);
   Vex.Flow.Test.runTest("Basic JSON IR Test", Vex.Flow.Test.Document.jsonSimple);
   Vex.Flow.Test.runTest("Basic MusicXML Test", Vex.Flow.Test.Document.xmlSimple);
   Vex.Flow.Test.runTest("MusicXML Document Test", Vex.Flow.Test.Document.xmlDoc);
 };
+
+Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
+  expect(4);
+  // Custom backend programmatically generates measures
+  var CustomBackend = function() {};
+  CustomBackend.appearsValid = function(arg) { return true; };
+  CustomBackend.prototype.parse = function(arg) { };
+  CustomBackend.prototype.isValid = function() { return true; };
+  CustomBackend.prototype.getNumberOfMeasures = function() { return 1; };
+  CustomBackend.prototype.getMeasure = function(i) {
+    var measure = new Vex.Flow.Measure({time: {num_beats: 4, beat_value: 4}});
+    return measure;
+  };
+  // argument must evaluate to true
+  var doc = new Vex.Flow.Document({}, {backend: CustomBackend});
+  ok(doc instanceof Vex.Flow.Document, "created document");
+  ok(doc.getNumberOfMeasures() == 1, "correct number of measures");
+  var measure = doc.getMeasure(0);
+  ok(measure instanceof Vex.Flow.Measure, "created measure");
+  for (var i = 0; i < 4; i++)
+    measure.addNote({keys: ["c/4"], duration: "4"});
+  ok(true, "added notes to measure");
+}
 
 Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {
   expect(3);

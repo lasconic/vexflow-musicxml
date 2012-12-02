@@ -77,7 +77,7 @@ Vex.Flow.Document.prototype.init = function(data, options) {
     this.backend = null;
     return;
   }
-  var backends = (typeof this.options.backend == "object")
+  var backends = (typeof this.options.backend == "function")
                  ? [this.options.backend] : Vex.Flow.Document.backends;
   for (var i = 0; i < backends.length; i++) {
     var Backend = backends[i];

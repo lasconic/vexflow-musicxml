@@ -12,9 +12,10 @@ Vex.Flow.Measure = function(object) {
               "Measure must be initialized with nonzero num_beats and beat_value");
   this.time = object.time;
 
-  // Default values
   this.attributes = {};
-  this.parts = new Array();
+  if (typeof object.attributes == "object")
+    Vex.Merge(this.attributes, object.attributes);
+  this.parts = new Array(1); // default to 1 part
   if (object.parts instanceof Array) {
     this.parts.length = object.parts.length;
     for (var i = 0; i < object.parts.length; i++)
@@ -35,12 +36,28 @@ Vex.Flow.Measure.prototype.setNumberOfParts = function(numParts) {
 }
 
 Vex.Flow.Measure.prototype.getPart = function(partNum) {
+  if (! this.parts[partNum]) {
+    // Create empty part
+    this.parts[partNum] = new Vex.Flow.Measure.Part({time: this.time});
+  }
   return this.parts[partNum];
 }
 Vex.Flow.Measure.prototype.setPart = function(partNum, part) {
   if (this.parts.length <= partNum)
-    throw new Vex.RERR("ArgumentError", "Call setNumberOfParts before adding part");
+    throw new Vex.RERR("ArgumentError", "Set number of parts before adding part");
   this.parts[partNum] = new Vex.Flow.Measure.Part(part);
+}
+
+/**
+ * Add a note to the end of the voice.
+ * This is a convenience method that only works when there is one part and
+ * one voice. If there is no room for the note, a Vex.RuntimeError is thrown.
+ * @param {Object} Note object
+ */
+Vex.Flow.Measure.prototype.addNote = function(note) {
+  if (this.getNumberOfParts() != 1)
+    throw new Vex.RERR("ArgumentError", "Measure.addNote requires single part");
+  this.getPart(0).addNote(note);
 }
 
 /**
@@ -59,9 +76,41 @@ Vex.Flow.Measure.Part = function(object) {
     for (var i = 0; i < object.voices.length; i++)
       this.voices[i] = new Vex.Flow.Measure.Voice(object.voices[i]);
   }
-  else this.voices = new Array();
+  else this.voices = new Array(1); // Default to single voice
 
   this.type = "part";
+}
+
+Vex.Flow.Measure.Part.prototype.getNumberOfVoices = function(numVoices) {
+  return this.voices.length;
+}
+Vex.Flow.Measure.Part.prototype.setNumberOfVoices = function(numVoices) {
+  this.voices.length = numVoices;
+}
+
+Vex.Flow.Measure.Part.prototype.getVoice = function(voiceNum) {
+  if (! this.voices[voiceNum]) {
+    // Create empty voice
+    this.voices[voiceNum] = new Vex.Flow.Measure.Voice({time: this.time});
+  }
+  return this.voices[voiceNum];
+}
+Vex.Flow.Measure.Part.prototype.setVoice = function(voiceNum, voice) {
+  if (this.voices.length <= voiceNum)
+    throw new Vex.RERR("ArgumentError", "Set number of voices before adding voice");
+  this.voices[voiceNum] = new Vex.Flow.Measure.Voice(voice);
+}
+
+/**
+ * Add a note to the end of the voice.
+ * This is a convenience method that only works when the part only has
+ * one voice. If there is no room for the note, a Vex.RuntimeError is thrown.
+ * @param {Object} Note object
+ */
+Vex.Flow.Measure.Part.prototype.addNote = function(note) {
+  if (this.getNumberOfVoices() != 1)
+    throw new Vex.RERR("ArgumentError", "Measure.addNote requires single part");
+  this.getVoice(0).addNote(note);
 }
 
 /**
@@ -84,6 +133,16 @@ Vex.Flow.Measure.Voice = function(object) {
   else this.notes = new Array();
 
   this.type = "voice";
+}
+
+/**
+ * Add a note to the end of the voice.
+ * If there is no room for the note, a Vex.RuntimeError is thrown.
+ * @param {Object} Note object
+ */
+Vex.Flow.Measure.Voice.prototype.addNote = function(note) {
+  // TODO: Check total ticks in voice
+  this.notes.push(new Vex.Flow.Measure.Note(note));
 }
 
 /**
