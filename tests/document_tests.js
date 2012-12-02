@@ -1,5 +1,5 @@
 /**
- * VexFlow - Document Tests (MusicXML and TabDiv)
+ * VexFlow - Document Tests (JSON, MusicXML and TabDiv)
  * @author Daniel Ringwalt (ringw)
  */
 
@@ -7,9 +7,31 @@ Vex.Flow.Test.Document = {};
 
 Vex.Flow.Test.Document.Start = function() {
   module("Document");
+  Vex.Flow.Test.runTest("Basic JSON IR Test", Vex.Flow.Test.Document.jsonSimple);
   Vex.Flow.Test.runTest("Basic MusicXML Test", Vex.Flow.Test.Document.xmlSimple);
   Vex.Flow.Test.runTest("MusicXML Document Test", Vex.Flow.Test.Document.xmlDoc);
 };
+
+Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {
+  expect(3);
+  var jsonDoc = {type: "document", measures: [
+   {type: "measure", time: {num_beats: 4, beat_value: 4},
+    parts: [
+     {type: "part", time: {num_beats: 4, beat_value: 4},
+      voices: [
+       {type: "voice", time: {num_beats: 4, beat_value: 4},
+        notes: [
+         {type: "note", keys: ["c/4"], duration: "1"}
+        ]}
+      ]}
+    ]}
+  ]};
+  var doc = new Vex.Flow.Document(jsonDoc);
+  ok(doc instanceof Vex.Flow.Document, "created document");
+  ok(doc.getNumberOfMeasures() == 1, "correct number of measures");
+  var measure = doc.getMeasure(0);
+  ok(measure instanceof Vex.Flow.Measure, "created measure");
+}
 
 Vex.Flow.Test.Document.xmlSimple = function(options, contextBuilder) {
   var docString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\
