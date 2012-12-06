@@ -106,6 +106,7 @@ Vex.Flow.Measure.Part = function(object) {
   else this.staves = new Array(1);
 
   this._vexflowVoices = null;
+  this._vexflowObjects = null; // concatenated from each voice
 
   this.type = "part";
 }
@@ -155,8 +156,12 @@ Vex.Flow.Measure.Part.prototype.setStave = function(staveNum, stave) {
 Vex.Flow.Measure.Part.prototype.getVexflowVoices = function() {
   if (! this._vexflowVoices) {
     this._vexflowVoices = new Array();
-    for (var i = 0; i < this.voices.length; i++)
-      this._vexflowVoices.push(this.getVoice(i).getVexflowVoice(this.staves));
+    this._vexflowObjects = new Array();
+    for (var i = 0; i < this.voices.length; i++) {
+      var voice = this.getVoice(i);
+      this._vexflowVoices.push(voice.getVexflowVoice(this.staves));
+      Array.prototype.push.apply(this._vexflowObjects, voice.getVexflowObjects());
+    }
   }
   return this._vexflowVoices;
 }
@@ -176,6 +181,8 @@ Vex.Flow.Measure.Part.prototype.draw = function(context) {
   formatter.format(vfVoices, vfStave.getNoteEndX() - vfStave.getNoteStartX());
   for (var i = 0; i < vfVoices.length; i++)
     vfVoices[i].draw(context, vfStave);
+  for (var i = 0; i < this._vexflowObjects.length; i++)
+    this._vexflowObjects[i].setContext(context).draw();
 }
 
 /**
@@ -210,6 +217,7 @@ Vex.Flow.Measure.Voice = function(object) {
   else this.notes = new Array();
 
   this._vexflowVoice = null;
+  this._vexflowObjects = null;
 
   this.type = "voice";
 }
@@ -235,12 +243,34 @@ Vex.Flow.Measure.Voice.prototype.getVexflowVoice = function(staves) {
     var voice = new Vex.Flow.Voice({num_beats: this.time.num_beats,
                                     beat_value: this.time.beat_value,
                                     resolution: Vex.Flow.RESOLUTION});
-    for (var i = 0; i < this.notes.length; i++)
-      voice.addTickable(this.notes[i].getVexflowNote());
-    // TODO: Create beams, etc and store them
+    this._vexflowObjects = new Array();
+    var beamedNotes = undefined;
+    for (var i = 0; i < this.notes.length; i++) {
+      var note = this.notes[i];
+      var vfNote = this.notes[i].getVexflowNote();
+      voice.addTickable(vfNote);
+      if (note.beam == "begin") beamedNotes = [vfNote];
+      else if (beamedNotes) {
+        beamedNotes.push(vfNote);
+        if (note.beam == "end") {
+          this._vexflowObjects.push(new Vex.Flow.Beam(beamedNotes));
+          beamedNotes = undefined;
+        }
+      }
+    }
     this._vexflowVoice = voice;
   }
   return this._vexflowVoice;
+}
+
+/**
+ * Returns an array of objects such as beams which are created from the
+ * VexFlow voice returned from getVexflowVoice. If the VexFlow voice has not
+ * been created, the arguments are required and are passed to getVexflowVoice.
+ */
+Vex.Flow.Measure.Voice.prototype.getVexflowObjects = function(staves) {
+  if (! this._vexflowVoice) this.getVexflowVoice(staves);
+  return this._vexflowObjects;
 }
 
 /**
@@ -299,6 +329,8 @@ Vex.Flow.Measure.Note = function(object) {
     this.keys = object.keys.slice();
   else this.keys = new Array();
   this.duration = object.duration;
+  this.stem_direction = object.stem_direction;
+  this.beam = object.beam;
 
   this._vexflowNote = null;
 
@@ -306,8 +338,12 @@ Vex.Flow.Measure.Note = function(object) {
 }
 
 Vex.Flow.Measure.Note.prototype.getVexflowNote = function() {
-  if (! this._vexflowNote)
-    this._vexflowNote = new Vex.Flow.StaveNote({keys: this.keys,
-                                                duration: this.duration});
+  if (! this._vexflowNote) {
+    var note_struct = {};
+    note_struct.keys = this.keys;
+    note_struct.duration = this.duration;
+    if (this.stem_direction) note_struct.stem_direction = this.stem_direction;
+    this._vexflowNote = new Vex.Flow.StaveNote(note_struct);
+  }
   return this._vexflowNote;
 }
