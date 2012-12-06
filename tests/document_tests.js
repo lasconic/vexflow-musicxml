@@ -15,7 +15,7 @@ Vex.Flow.Test.Document.Start = function() {
 };
 
 Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
-  expect(4);
+  expect(11);
   // Custom backend programmatically generates measures
   var CustomBackend = function() {};
   CustomBackend.appearsValid = function(arg) { return true; };
@@ -24,6 +24,9 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
   CustomBackend.prototype.getNumberOfMeasures = function() { return 1; };
   CustomBackend.prototype.getMeasure = function(i) {
     var measure = new Vex.Flow.Measure({time: {num_beats: 4, beat_value: 4}});
+    for (var i = 0; i < 4; i++)
+      measure.addNote({keys: ["c/4"], duration: "4"});
+    ok(true, "added notes to measure");
     return measure;
   };
   // argument must evaluate to true
@@ -32,9 +35,20 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
   ok(doc.getNumberOfMeasures() == 1, "correct number of measures");
   var measure = doc.getMeasure(0);
   ok(measure instanceof Vex.Flow.Measure, "created measure");
-  for (var i = 0; i < 4; i++)
-    measure.addNote({keys: ["c/4"], duration: "4"});
-  ok(true, "added notes to measure");
+  ok(measure.getNumberOfParts() == 1, "measure has correct # parts");
+  var part = measure.getPart(0);
+  ok(part instanceof Vex.Flow.Measure.Part, "part from measure");
+  ok(measure.getNumberOfStaves() == 1, "measures has correct # staves");
+  var stave = measure.getStave(0);
+  ok(stave instanceof Vex.Flow.Measure.Stave, "stave from measure");
+
+  ok(part.getNumberOfVoices() == 1, "part has correct # voices");
+  var voice = part.getVoice(0);
+  ok(voice instanceof Vex.Flow.Measure.Voice, "voice from part");
+
+  var ctx = new contextBuilder(options.canvas_sel, 300, 120);
+  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  ok(true, "drew document");
 }
 
 Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {

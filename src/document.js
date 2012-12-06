@@ -112,4 +112,15 @@ Vex.Flow.Document.prototype.getMeasure = function(i) {
   return measure;
 }
 
-// TODO: add methods for formatting information, etc.
+/**
+ * Draw the complete document in the rect given by x, y, width, height with context.
+ * @param {Object} Options (x, y, width, height, context required)
+ */
+Vex.Flow.Document.prototype.draw = function(options) {
+  // TODO: Multiple measure/stave support
+  var part = this.getMeasure(0).getPart(0);
+  var stave = part.getStave(0);
+  // Force create stave with the correct x, y, width
+  var vfStave = stave.getVexflowStave(options.x+10, options.y, options.width-20);
+  part.draw(options.context);
+}

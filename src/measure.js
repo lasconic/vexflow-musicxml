@@ -21,6 +21,10 @@ Vex.Flow.Measure = function(object) {
     for (var i = 0; i < object.parts.length; i++)
       this.parts[i] = new Vex.Flow.Measure.Part(object.parts[i]);
   }
+
+  // Properties which begin with an underscore should NOT be serialized
+  this._vexflowStaves = null;
+
   this.type = "measure";
 }
 
@@ -46,6 +50,23 @@ Vex.Flow.Measure.prototype.setPart = function(partNum, part) {
   if (this.parts.length <= partNum)
     throw new Vex.RERR("ArgumentError", "Set number of parts before adding part");
   this.parts[partNum] = new Vex.Flow.Measure.Part(part);
+}
+
+Vex.Flow.Measure.prototype.getNumberOfStaves = function() {
+  // Sum number of staves from each part
+  var totalStaves = 0;
+  for (var i = 0; i < this.getNumberOfParts(); i++)
+    totalStaves += this.getPart(i).getNumberOfStaves();
+  return totalStaves;
+}
+Vex.Flow.Measure.prototype.getStave = function(staveNum) {
+  var firstStaveForPart = 0;
+  for (var i = 0; i < this.getNumberOfParts(); i++) {
+    var part = this.getPart(i);
+    if (firstStaveForPart + part.getNumberOfStaves() > staveNum)
+      return part.getStave(staveNum - firstStaveForPart);
+  }
+  return undefined;
 }
 
 /**
@@ -77,6 +98,14 @@ Vex.Flow.Measure.Part = function(object) {
       this.voices[i] = new Vex.Flow.Measure.Voice(object.voices[i]);
   }
   else this.voices = new Array(1); // Default to single voice
+  if (object.staves instanceof Array) {
+    this.staves = new Array(object.staves.length);
+    for (var i = 0; i < object.staves.length; i++)
+      this.staves[i] = new Vex.Flow.Measure.Stave(object.staves[i]);
+  }
+  else this.staves = new Array(1);
+
+  this._vexflowVoices = null;
 
   this.type = "part";
 }
@@ -87,7 +116,6 @@ Vex.Flow.Measure.Part.prototype.getNumberOfVoices = function(numVoices) {
 Vex.Flow.Measure.Part.prototype.setNumberOfVoices = function(numVoices) {
   this.voices.length = numVoices;
 }
-
 Vex.Flow.Measure.Part.prototype.getVoice = function(voiceNum) {
   if (! this.voices[voiceNum]) {
     // Create empty voice
@@ -99,6 +127,55 @@ Vex.Flow.Measure.Part.prototype.setVoice = function(voiceNum, voice) {
   if (this.voices.length <= voiceNum)
     throw new Vex.RERR("ArgumentError", "Set number of voices before adding voice");
   this.voices[voiceNum] = new Vex.Flow.Measure.Voice(voice);
+}
+
+Vex.Flow.Measure.Part.prototype.getNumberOfStaves = function(numStaves) {
+  return this.staves.length;
+}
+Vex.Flow.Measure.Part.prototype.setNumberOfStaves = function(numStaves) {
+  this.staves.length = numStaves;
+}
+Vex.Flow.Measure.Part.prototype.getStave = function(staveNum) {
+  if (! this.staves[staveNum]) {
+    // Create empty stave
+    this.staves[staveNum] = new Vex.Flow.Measure.Stave({time: this.time});
+  }
+  return this.staves[staveNum];
+}
+Vex.Flow.Measure.Part.prototype.setStave = function(staveNum, stave) {
+  if (this.staves.length <= staveNum)
+    throw new Vex.RERR("ArgumentError", "Set number of staves before adding stave");
+  this.staves[staveNum] = new Vex.Flow.Measure.Stave(stave);
+}
+
+/**
+ * Create a Vex.Flow.Voice from each voice. Currently supports single stave,
+ * which must have had getVexflowStave invoked already with the correct x, y, width.
+ */
+Vex.Flow.Measure.Part.prototype.getVexflowVoices = function() {
+  if (! this._vexflowVoices) {
+    this._vexflowVoices = new Array();
+    for (var i = 0; i < this.voices.length; i++)
+      this._vexflowVoices.push(this.getVoice(i).getVexflowVoice(this.staves));
+  }
+  return this._vexflowVoices;
+}
+
+/**
+ * Draw staves and voices. 
+ * 
+ */
+Vex.Flow.Measure.Part.prototype.draw = function(context) {
+  if (this.staves.length != 1)
+    throw new Vex.RERR("FormattingError", "Only single stave supported currently");
+  var stave = this.getStave(0);
+  var vfStave = stave.getVexflowStave();
+  vfStave.setContext(context).draw();
+  var vfVoices = this.getVexflowVoices();
+  var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
+  formatter.format(vfVoices, vfStave.getNoteEndX() - vfStave.getNoteStartX());
+  for (var i = 0; i < vfVoices.length; i++)
+    vfVoices[i].draw(context, vfStave);
 }
 
 /**
@@ -132,6 +209,8 @@ Vex.Flow.Measure.Voice = function(object) {
   }
   else this.notes = new Array();
 
+  this._vexflowVoice = null;
+
   this.type = "voice";
 }
 
@@ -143,6 +222,25 @@ Vex.Flow.Measure.Voice = function(object) {
 Vex.Flow.Measure.Voice.prototype.addNote = function(note) {
   // TODO: Check total ticks in voice
   this.notes.push(new Vex.Flow.Measure.Note(note));
+}
+
+/**
+ * Create a Vex.Flow.Voice with a StaveNote for each note.
+ * Each note is added to the proper Vex.Flow.Measure.Stave in staves
+ * (spanning multiple staves in a single voice not currently supported by VexFlow.)
+ * @param {Array} Staves to add the notes to
+ */
+Vex.Flow.Measure.Voice.prototype.getVexflowVoice = function(staves) {
+  if (! this._vexflowVoice) {
+    var voice = new Vex.Flow.Voice({num_beats: this.time.num_beats,
+                                    beat_value: this.time.beat_value,
+                                    resolution: Vex.Flow.RESOLUTION});
+    for (var i = 0; i < this.notes.length; i++)
+      voice.addTickable(this.notes[i].getVexflowNote());
+    // TODO: Create beams, etc and store them
+    this._vexflowVoice = voice;
+  }
+  return this._vexflowVoice;
 }
 
 /**
@@ -163,6 +261,8 @@ Vex.Flow.Measure.Stave = function(object) {
       this.addModifier(object.modifiers[i]);
   }
 
+  this._vexflowStave = null;
+
   this.type = "stave";
 }
 /**
@@ -172,6 +272,18 @@ Vex.Flow.Measure.Stave = function(object) {
 Vex.Flow.Measure.Stave.prototype.addModifier = function(modifier) {
   // TODO: Verify that the modifier is correct
   this.modifiers.push(modifier);
+}
+
+/**
+ * Creates a Vex.Flow.Stave, or returns the existing one if this method was
+ * already called. x, y, width are required if the method was not already invoked.
+ */
+Vex.Flow.Measure.Stave.prototype.getVexflowStave = function(x, y, width) {
+  if (! this._vexflowStave) {
+    this._vexflowStave = new Vex.Flow.Stave(x, y, width);
+    // TODO: Add modifiers, etc
+  }
+  return this._vexflowStave;
 }
 
 /**
@@ -186,6 +298,16 @@ Vex.Flow.Measure.Note = function(object) {
     // TODO: check each element
     this.keys = object.keys.slice();
   else this.keys = new Array();
+  this.duration = object.duration;
+
+  this._vexflowNote = null;
 
   this.type = "note";
+}
+
+Vex.Flow.Measure.Note.prototype.getVexflowNote = function() {
+  if (! this._vexflowNote)
+    this._vexflowNote = new Vex.Flow.StaveNote({keys: this.keys,
+                                                duration: this.duration});
+  return this._vexflowNote;
 }
