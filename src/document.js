@@ -118,9 +118,82 @@ Vex.Flow.Document.prototype.getMeasure = function(i) {
  */
 Vex.Flow.Document.prototype.draw = function(options) {
   // TODO: Multiple measure/stave support
-  var part = this.getMeasure(0).getPart(0);
+  var measure = this.getMeasure(0);
+  var part = measure.getPart(0);
   var stave = part.getStave(0);
   // Force create stave with the correct x, y, width
-  var vfStave = stave.getVexflowStave(options.x+10, options.y, options.width-20);
-  part.draw(options.context);
+  //var vfStave = stave.getVexflowStave(options.x+10, options.y, options.width-20);
+  this.layoutMeasure(measure, options.x+10, options.y, options.width-20);
+  //part.draw(options.context);
+  this.drawPart(part, options.context);
+}
+
+/**
+ * Lay out staves in the measure, starting from (x, y).
+ * Return coordinates {x, y, width, height} of the entire measure.
+ */
+Vex.Flow.Document.prototype.layoutMeasure = function(measure, x, y, width) {
+  // Join staves from all parts in one array
+  var staves = new Array();
+  var numParts = measure.getNumberOfParts();
+  for (var i = 0; i < numParts; i++) {
+    var part = measure.getPart(i);
+    var numStaves = part.getNumberOfStaves();
+    for (var j = 0; j < numStaves; j++) staves.push(part.getStave(j));
+  }
+
+  // Lay out each stave
+  var origY = y;
+  for (var i = 0; i < staves.length; i++) {
+    staves[i].setX(x);
+    staves[i].setY(y);
+    staves[i].setWidth(width);
+    y += staves[i].getHeight();
+  }
+  return {x: x, y: origY, width: width, height: y - origY};
+}
+
+/**
+ * Draw staves and voices of a part. (The measure must be laid out first.)
+ */
+Vex.Flow.Document.prototype.drawPart = function(part, context) {
+  var staves = new Array(part.getNumberOfStaves());
+  for (var i = 0; i < part.getNumberOfStaves(); i++) staves[i] = part.getStave(i);
+  var voices = new Array(part.getNumberOfVoices());
+  for (var i = 0; i < part.getNumberOfVoices(); i++) voices[i] = part.getVoice(i);
+
+  // Array for each stave -> array of voices corresponding to that stave
+  var voicesForStave = new Array(part.getNumberOfStaves());
+  if (staves.length == 1) {
+    for (var i = 0; i < voices.length; i++) voices[i].stave = 0;
+    voicesForStave[0] = voices;
+  }
+  else {
+    for (var i = 0; i < voices.length; i++) {
+      if (typeof voices[i].stave != "number")
+        throw new Vex.RERR("InvalidIRError",
+                           "Voice in multi-stave part requires stave property");
+      if (voices[i].stave in voicesForStave)
+        voicesForStave[voices[i].stave].push(voices[i]);
+      else
+        voicesForStave[voices[i].stave] = [voices[i]];
+    }
+  }
+  for (var i = 0; i < staves.length; i++)
+    staves[i].getVexflowStave().setContext(context).draw();
+  for (var i = 0; i < staves.length; i++)
+    if (voicesForStave[i] instanceof Array) {
+      var vfVoices = new Array();
+      for (var j = 0; j < voicesForStave[i].length; j++)
+        vfVoices[j] = voicesForStave[i][j].getVexflowVoice();
+      var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
+      var vfStave = staves[i].getVexflowStave();
+      formatter.format(vfVoices, vfStave.getNoteEndX() - vfStave.getNoteStartX());
+      for (var j = 0; j < vfVoices.length; j++) {
+        vfVoices[j].draw(context, vfStave);
+        var vfObjects = voicesForStave[i][j].getVexflowObjects();
+        for (var obj = 0; obj < vfObjects.length; obj++)
+          vfObjects[obj].setContext(context).draw();
+      }
+    }
 }

@@ -10,6 +10,7 @@ Vex.Flow.Test.Document.Start = function() {
   Vex.Flow.Test.runTest("Auto-generated Measure Test",
                         Vex.Flow.Test.Document.measure);
   Vex.Flow.Test.runTest("Basic JSON IR Test", Vex.Flow.Test.Document.jsonSimple);
+  Vex.Flow.Test.runTest("Complex JSON IR Test", Vex.Flow.Test.Document.jsonComplex);
   Vex.Flow.Test.runTest("Basic MusicXML Test", Vex.Flow.Test.Document.xmlSimple);
   Vex.Flow.Test.runTest("MusicXML Document Test", Vex.Flow.Test.Document.xmlDoc);
 };
@@ -86,6 +87,54 @@ Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {
   ok(measure instanceof Vex.Flow.Measure, "created measure");
 
   var ctx = new contextBuilder(options.canvas_sel, 300, 120);
+  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  ok(true, "drew document");
+}
+
+Vex.Flow.Test.Document.jsonComplex = function(options, contextBuilder) {
+  expect(4);
+  var jsonDoc = {type: "document", measures: [
+   {type: "measure", time: {num_beats: 4, beat_value: 4},
+    parts: [
+     {type: "part", time: {num_beats: 4, beat_value: 4},
+      staves: [
+       {type: "stave", time: {num_beats: 4, beat_value: 4}, clef: "treble"},
+       {type: "stave", time: {num_beats: 4, beat_value: 4}, clef: "treble"}
+      ],
+      voices: [
+       {type: "voice", time: {num_beats: 4, beat_value: 4}, stave: 1,
+        notes: [
+         {type: "note", keys: ["c/4"], duration: "1", stem_direction: -1}
+        ]},
+       {type: "voice", time: {num_beats: 4, beat_value: 4}, stave: 1,
+        notes: [
+         {type: "note", keys: ["g/4"], duration: "4"},
+         {type: "note", keys: ["a/4"], duration: "4"},
+         {type: "note", keys: ["b/4"], duration: "4"},
+         {type: "note", keys: ["c/5"], duration: "4"}
+        ]},
+       {type: "voice", time: {num_beats: 4, beat_value: 4}, stave: 0,
+        notes: [
+         {type: "note", keys: ["g/4"], duration: "4"},
+         {type: "note", keys: ["a/4"], duration: "4"},
+         {type: "note", keys: ["b/4"], duration: "8", beam: "begin",
+          stem_direction: -1},
+         {type: "note", keys: ["c/5"], duration: "8", stem_direction: -1},
+         {type: "note", keys: ["d/5"], duration: "16", stem_direction: -1},
+         {type: "note", keys: ["e/5"], duration: "16", stem_direction: -1},
+         {type: "note", keys: ["f/5"], duration: "8", beam: "end",
+          stem_direction: -1}
+        ]}
+      ]}
+    ]}
+  ]};
+  var doc = new Vex.Flow.Document(jsonDoc);
+  ok(doc instanceof Vex.Flow.Document, "created document");
+  ok(doc.getNumberOfMeasures() == 1, "correct number of measures");
+  var measure = doc.getMeasure(0);
+  ok(measure instanceof Vex.Flow.Measure, "created measure");
+
+  var ctx = new contextBuilder(options.canvas_sel, 300, 220);
   doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
   ok(true, "drew document");
 }

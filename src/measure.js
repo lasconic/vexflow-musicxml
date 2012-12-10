@@ -103,10 +103,9 @@ Vex.Flow.Measure.Part = function(object) {
     for (var i = 0; i < object.staves.length; i++)
       this.staves[i] = new Vex.Flow.Measure.Stave(object.staves[i]);
   }
+  else if (typeof object.staves == "number")
+    this.staves = new Array(object.staves);
   else this.staves = new Array(1);
-
-  this._vexflowVoices = null;
-  this._vexflowObjects = null; // concatenated from each voice
 
   this.type = "part";
 }
@@ -150,42 +149,6 @@ Vex.Flow.Measure.Part.prototype.setStave = function(staveNum, stave) {
 }
 
 /**
- * Create a Vex.Flow.Voice from each voice. Currently supports single stave,
- * which must have had getVexflowStave invoked already with the correct x, y, width.
- */
-Vex.Flow.Measure.Part.prototype.getVexflowVoices = function() {
-  if (! this._vexflowVoices) {
-    this._vexflowVoices = new Array();
-    this._vexflowObjects = new Array();
-    for (var i = 0; i < this.voices.length; i++) {
-      var voice = this.getVoice(i);
-      this._vexflowVoices.push(voice.getVexflowVoice(this.staves));
-      Array.prototype.push.apply(this._vexflowObjects, voice.getVexflowObjects());
-    }
-  }
-  return this._vexflowVoices;
-}
-
-/**
- * Draw staves and voices. 
- * 
- */
-Vex.Flow.Measure.Part.prototype.draw = function(context) {
-  if (this.staves.length != 1)
-    throw new Vex.RERR("FormattingError", "Only single stave supported currently");
-  var stave = this.getStave(0);
-  var vfStave = stave.getVexflowStave();
-  vfStave.setContext(context).draw();
-  var vfVoices = this.getVexflowVoices();
-  var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
-  formatter.format(vfVoices, vfStave.getNoteEndX() - vfStave.getNoteStartX());
-  for (var i = 0; i < vfVoices.length; i++)
-    vfVoices[i].draw(context, vfStave);
-  for (var i = 0; i < this._vexflowObjects.length; i++)
-    this._vexflowObjects[i].setContext(context).draw();
-}
-
-/**
  * Add a note to the end of the voice.
  * This is a convenience method that only works when the part only has
  * one voice. If there is no room for the note, a Vex.RuntimeError is thrown.
@@ -215,6 +178,10 @@ Vex.Flow.Measure.Voice = function(object) {
       this.notes[i] = new Vex.Flow.Measure.Note(object.notes[i]);
   }
   else this.notes = new Array();
+
+  // Voice must currently be on a single stave
+  if (typeof object.stave == "number") this.stave = object.stave;
+  else this.stave = 0;
 
   this._vexflowVoice = null;
   this._vexflowObjects = null;
@@ -291,6 +258,8 @@ Vex.Flow.Measure.Stave = function(object) {
       this.addModifier(object.modifiers[i]);
   }
 
+  this._x = this._y = this._width = 0;
+  this._height = undefined;
   this._vexflowStave = null;
 
   this.type = "stave";
@@ -304,13 +273,25 @@ Vex.Flow.Measure.Stave.prototype.addModifier = function(modifier) {
   this.modifiers.push(modifier);
 }
 
+Vex.Flow.Measure.Stave.prototype.getX = function() { return this._x; }
+Vex.Flow.Measure.Stave.prototype.setX = function(x) { this._x = x; }
+Vex.Flow.Measure.Stave.prototype.getY = function() { return this._y; }
+Vex.Flow.Measure.Stave.prototype.setY = function(y) { this._y = y; }
+Vex.Flow.Measure.Stave.prototype.getWidth = function() { return this._width; }
+Vex.Flow.Measure.Stave.prototype.setWidth = function(width) { this._width = width; }
+Vex.Flow.Measure.Stave.prototype.getHeight = function() {
+  // Get height of dummy stave
+  if (! this._height) this._height = (new Vex.Flow.Stave(0, 0, 500)).getHeight();
+  return this._height;
+}
+
 /**
  * Creates a Vex.Flow.Stave, or returns the existing one if this method was
  * already called. x, y, width are required if the method was not already invoked.
  */
-Vex.Flow.Measure.Stave.prototype.getVexflowStave = function(x, y, width) {
+Vex.Flow.Measure.Stave.prototype.getVexflowStave = function() {
   if (! this._vexflowStave) {
-    this._vexflowStave = new Vex.Flow.Stave(x, y, width);
+    this._vexflowStave = new Vex.Flow.Stave(this._x, this._y, this._width);
     // TODO: Add modifiers, etc
   }
   return this._vexflowStave;
