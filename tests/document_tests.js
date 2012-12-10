@@ -12,7 +12,7 @@ Vex.Flow.Test.Document.Start = function() {
   Vex.Flow.Test.runTest("Basic JSON IR Test", Vex.Flow.Test.Document.jsonSimple);
   Vex.Flow.Test.runTest("Complex JSON IR Test", Vex.Flow.Test.Document.jsonComplex);
   Vex.Flow.Test.runTest("Basic MusicXML Test", Vex.Flow.Test.Document.xmlSimple);
-  Vex.Flow.Test.runTest("MusicXML Document Test", Vex.Flow.Test.Document.xmlDoc);
+  //Vex.Flow.Test.runTest("MusicXML Document Test", Vex.Flow.Test.Document.xmlDoc);
 };
 
 Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
@@ -140,6 +140,8 @@ Vex.Flow.Test.Document.jsonComplex = function(options, contextBuilder) {
 }
 
 Vex.Flow.Test.Document.xmlSimple = function(options, contextBuilder) {
+  expect(2);
+
   var docString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\
 <!DOCTYPE score-partwise PUBLIC\
     "-//Recordare//DTD MusicXML 3.0 Partwise//EN"\
@@ -179,6 +181,10 @@ Vex.Flow.Test.Document.xmlSimple = function(options, contextBuilder) {
 </score-partwise>';
   var doc = new Vex.Flow.Document(docString);
   ok(true, "created document");
+
+  var ctx = new contextBuilder(options.canvas_sel, 300, 120);
+  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  ok(true, "drew document");
 }
 Vex.Flow.Test.Document.Fetch = function(uri) {
   var req = new XMLHttpRequest();
@@ -200,6 +206,11 @@ Vex.Flow.Test.Document.xmlDoc = function(options, contextBuilder) {
     ok(false, "Document support/bach_bwv846p.xml does not exist");
     return;
   }
+  expect(2);
   var doc = new Vex.Flow.Document(docString);
   ok(true, "created document");
+
+  var ctx = new contextBuilder(options.canvas_sel, 300, 120);
+  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  ok(true, "drew document");
 };
