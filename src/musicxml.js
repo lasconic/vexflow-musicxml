@@ -158,10 +158,12 @@ Vex.Flow.Backend.MusicXML.prototype.getNumberOfMeasures = function() {
  * @return {Vex.Flow.Measure} mth measure as a Measure object
  */
 Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
-  var measure = new Vex.Flow.Measure({time: {num_beats: 4, beat_value: 4}});
+  var time = {num_beats: 4, beat_value: 4}; // FIXME time signature
+  var measure = new Vex.Flow.Measure({time: time});
   var numParts = this.measures[m].length;
   measure.setNumberOfParts(numParts);
   for (var p = 0; p < numParts; p++) {
+    measure.setPart(p, {time:time, clef:"treble"}); // FIXME clef
     var part = measure.getPart(p);
     var attrs = this.getAttributes(m, p);
     part.setNumberOfStaves(this.numStaves[p]);

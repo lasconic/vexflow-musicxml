@@ -24,7 +24,9 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
   CustomBackend.prototype.isValid = function() { return true; };
   CustomBackend.prototype.getNumberOfMeasures = function() { return 1; };
   CustomBackend.prototype.getMeasure = function(i) {
-    var measure = new Vex.Flow.Measure({time: {num_beats: 4, beat_value: 4}});
+    var time = {num_beats: 4, beat_value: 4};
+    var measure = new Vex.Flow.Measure({time: time});
+    measure.setPart(0, {time: time, clef: "treble"});
     measure.addNote({keys: ["c/4"], duration: "4"});
     measure.addNote({keys: ["d/4"], duration: "4"});
     measure.addNote({keys: ["e/4"], duration: "4"});
@@ -59,7 +61,7 @@ Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {
   var jsonDoc = {type: "document", measures: [
    {type: "measure", time: {num_beats: 4, beat_value: 4},
     parts: [
-     {type: "part", time: {num_beats: 4, beat_value: 4},
+     {type: "part", time: {num_beats: 4, beat_value: 4}, clef: "treble",
       voices: [
        {type: "voice", time: {num_beats: 4, beat_value: 4},
         notes: [
@@ -99,19 +101,19 @@ Vex.Flow.Test.Document.jsonComplex = function(options, contextBuilder) {
      {type: "part", time: {num_beats: 4, beat_value: 4},
       staves: [
        {type: "stave", time: {num_beats: 4, beat_value: 4}, clef: "treble"},
-       {type: "stave", time: {num_beats: 4, beat_value: 4}, clef: "treble"}
+       {type: "stave", time: {num_beats: 4, beat_value: 4}, clef: "bass"}
       ],
       voices: [
        {type: "voice", time: {num_beats: 4, beat_value: 4}, stave: 1,
         notes: [
-         {type: "note", keys: ["c/4"], duration: "1", stem_direction: -1}
+         {type: "note", keys: ["c/3"], duration: "1", stem_direction: -1}
         ]},
        {type: "voice", time: {num_beats: 4, beat_value: 4}, stave: 1,
         notes: [
-         {type: "note", keys: ["g/4"], duration: "4"},
-         {type: "note", keys: ["a/4"], duration: "4"},
-         {type: "note", keys: ["b/4"], duration: "4"},
-         {type: "note", keys: ["c/5"], duration: "4"}
+         {type: "note", keys: ["c/4"], duration: "4"},
+         {type: "note", keys: ["b/3"], duration: "4"},
+         {type: "note", keys: ["a/3"], duration: "4"},
+         {type: "note", keys: ["g/3"], duration: "4"}
         ]},
        {type: "voice", time: {num_beats: 4, beat_value: 4}, stave: 0,
         notes: [

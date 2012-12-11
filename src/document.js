@@ -125,7 +125,7 @@ Vex.Flow.Document.prototype.draw = function(options) {
   //var vfStave = stave.getVexflowStave(options.x+10, options.y, options.width-20);
   this.layoutMeasure(measure, options.x+10, options.y, options.width-20);
   //part.draw(options.context);
-  this.drawPart(part, options.context);
+  this.drawPart(part, options.context, {pieceStart: true, systemStart: true});
 }
 
 /**
@@ -156,9 +156,17 @@ Vex.Flow.Document.prototype.layoutMeasure = function(measure, x, y, width) {
 /**
  * Draw staves and voices of a part. (The measure must be laid out first.)
  */
-Vex.Flow.Document.prototype.drawPart = function(part, context) {
+Vex.Flow.Document.prototype.drawPart = function(part, context, options) {
   var staves = new Array(part.getNumberOfStaves());
   for (var i = 0; i < part.getNumberOfStaves(); i++) staves[i] = part.getStave(i);
+  if (options && options.systemStart) // Start of system: add clef and key signature
+    staves.forEach(function(s) {
+      if (typeof s.clef == "string") {
+        s.deleteModifier("clef");
+        s.addModifier({type: "clef", clef: s.clef});
+      }
+    });
+
   var voices = new Array(part.getNumberOfVoices());
   for (var i = 0; i < part.getNumberOfVoices(); i++) voices[i] = part.getVoice(i);
 
@@ -185,7 +193,7 @@ Vex.Flow.Document.prototype.drawPart = function(part, context) {
     if (voicesForStave[i] instanceof Array) {
       var vfVoices = new Array();
       for (var j = 0; j < voicesForStave[i].length; j++)
-        vfVoices[j] = voicesForStave[i][j].getVexflowVoice();
+        vfVoices[j] = voicesForStave[i][j].getVexflowVoice(staves);
       var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
       var vfStave = staves[i].getVexflowStave();
       formatter.format(vfVoices, vfStave.getNoteEndX() - vfStave.getNoteStartX());

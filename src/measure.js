@@ -103,9 +103,15 @@ Vex.Flow.Measure.Part = function(object) {
     for (var i = 0; i < object.staves.length; i++)
       this.staves[i] = new Vex.Flow.Measure.Stave(object.staves[i]);
   }
-  else if (typeof object.staves == "number")
-    this.staves = new Array(object.staves);
-  else this.staves = new Array(1);
+  else {
+    if (typeof object.staves == "number")
+      this.staves = new Array(object.staves);
+    else this.staves = new Array(1);
+
+    // Convenience options which can set on a part instead of a stave
+    this.staveOptions = {};
+    if (typeof object.clef == "string") this.staveOptions.clef = object.clef;
+  }
 
   this.type = "part";
 }
@@ -138,7 +144,8 @@ Vex.Flow.Measure.Part.prototype.setNumberOfStaves = function(numStaves) {
 Vex.Flow.Measure.Part.prototype.getStave = function(staveNum) {
   if (! this.staves[staveNum]) {
     // Create empty stave
-    this.staves[staveNum] = new Vex.Flow.Measure.Stave({time: this.time});
+    this.staves[staveNum] = new Vex.Flow.Measure.Stave(
+                                  Vex.Merge({time: this.time}, this.staveOptions));
   }
   return this.staves[staveNum];
 }
@@ -212,9 +219,10 @@ Vex.Flow.Measure.Voice.prototype.getVexflowVoice = function(staves) {
                                     resolution: Vex.Flow.RESOLUTION});
     this._vexflowObjects = new Array();
     var beamedNotes = undefined;
+    var clef = staves[this.stave].clef;
     for (var i = 0; i < this.notes.length; i++) {
       var note = this.notes[i];
-      var vfNote = this.notes[i].getVexflowNote();
+      var vfNote = this.notes[i].getVexflowNote({clef: clef});
       voice.addTickable(vfNote);
       if (note.beam == "begin") beamedNotes = [vfNote];
       else if (beamedNotes) {
@@ -252,6 +260,7 @@ Vex.Flow.Measure.Stave = function(object) {
     throw new Vex.RERR("ArgumentError",
                        "Constructor requires nonzero num_beats and beat_value");
   this.time = object.time;
+  this.clef = (typeof object.clef == "string") ? object.clef : undefined;
   this.modifiers = new Array();
   if (object.modifiers instanceof Array) {
     for (var i = 0; i < object.modifiers.length; i++)
@@ -264,13 +273,42 @@ Vex.Flow.Measure.Stave = function(object) {
 
   this.type = "stave";
 }
+
 /**
  * Adds a modifier (clef, etc.), which is just a plain object with a type
  * and other properties.
  */
 Vex.Flow.Measure.Stave.prototype.addModifier = function(modifier) {
-  // TODO: Verify that the modifier is correct
-  this.modifiers.push(modifier);
+  // Type is required for modifiers
+  if (typeof modifier != "object" || typeof modifier.type != "string")
+    throw new Vex.RERR("InvalidIRError", "Modifier requires type property");
+  var newModifier = {type: modifier.type}; // copy modifier
+  switch (modifier.type) {
+    case "clef":
+      if (typeof modifier.clef != "string")
+        throw new Vex.RERR("InvalidIRError", "Clef modifier requires clef string");
+      newModifier.clef = modifier.clef;
+      break;
+    default:
+      throw new Vex.RERR("InvalidIRError", "Modifier not recognized");
+  }
+  this.modifiers.push(newModifier);
+}
+
+/**
+ * Delete modifier(s) which have the given type.
+ *
+ * @param {String} Type of modifier
+ */
+Vex.Flow.Measure.Stave.prototype.deleteModifier = function(modifier) {
+  if (typeof modifier != "string")
+    throw new Vex.RERR("ArgumentError", "deleteModifier requires string argument");
+  // Create new modifier array with non-matching modifiers
+  var newModifiers = new Array();
+  for (var i = 0; i < this.modifiers.length; i++)
+    if (this.modifiers[i].type != modifier)
+      newModifiers.push(this.modifiers[i]);
+  this.modifiers = newModifiers;
 }
 
 Vex.Flow.Measure.Stave.prototype.getX = function() { return this._x; }
@@ -291,8 +329,15 @@ Vex.Flow.Measure.Stave.prototype.getHeight = function() {
  */
 Vex.Flow.Measure.Stave.prototype.getVexflowStave = function() {
   if (! this._vexflowStave) {
-    this._vexflowStave = new Vex.Flow.Stave(this._x, this._y, this._width);
-    // TODO: Add modifiers, etc
+    var vfStave = new Vex.Flow.Stave(this._x, this._y, this._width);
+    this.modifiers.forEach(function(m) {
+      switch (m.type) {
+        case "clef":
+          vfStave.addClef(m.clef);
+          break;
+      }
+    });
+    this._vexflowStave = vfStave;
   }
   return this._vexflowStave;
 }
@@ -318,9 +363,9 @@ Vex.Flow.Measure.Note = function(object) {
   this.type = "note";
 }
 
-Vex.Flow.Measure.Note.prototype.getVexflowNote = function() {
+Vex.Flow.Measure.Note.prototype.getVexflowNote = function(options) {
   if (! this._vexflowNote) {
-    var note_struct = {};
+    var note_struct = Vex.Merge({}, options);
     note_struct.keys = this.keys;
     note_struct.duration = this.duration;
     if (this.stem_direction) note_struct.stem_direction = this.stem_direction;
