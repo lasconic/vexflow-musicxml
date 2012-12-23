@@ -114,10 +114,7 @@
   <script src="../src/document.js"></script>
 
   <!-- Compiled Source -->
-  <script src="../vexflow.js"></script>
-
-  <!-- VexTab Source -->
-  <script src="../vextab/vextab.js"></script>
+  <script src="../support/vexflow-min.js"></script>
 
   <!-- Test Sources -->
   <link rel="stylesheet" href="support/qunit.css"
@@ -142,6 +139,7 @@
   <script src="tabtie_tests.js"></script>
   <script src="tabslide_tests.js"></script>
   <script src="beam_tests.js"></script>
+  <script src="auto_beam_formatting_tests.js"></script>
   <script src="vibrato_tests.js"></script>
   <script src="annotation_tests.js"></script>
   <script src="tuning_tests.js"></script>
@@ -158,7 +156,6 @@
   <script src="rhythm_tests.js"></script>
   <script src="tuplet_tests.js"></script>
   <script src="boundingbox_tests.js"></script>
-  <script src="../vextab/vextab_tests.js"></script>
   <script src="document_tests.js"></script>
 
   <script>
@@ -181,9 +178,9 @@
       Vex.Flow.Test.TabTie.Start();
       Vex.Flow.Test.TabSlide.Start();
       Vex.Flow.Test.Beam.Start();
+      Vex.Flow.Test.AutoBeamFormatting.Start();
       Vex.Flow.Test.Vibrato.Start();
       Vex.Flow.Test.Annotation.Start();
-      Vex.Flow.Test.VexTab.Start();
       Vex.Flow.Test.Tuning.Start();
       Vex.Flow.Test.Music.Start();
       Vex.Flow.Test.KeyManager.Start();
