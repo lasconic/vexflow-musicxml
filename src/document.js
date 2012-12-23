@@ -14,8 +14,7 @@ Vex.Flow.Backend.IR = function() {
 }
 
 /**
- * "Parse" an existing IR document object (not necessarily an instance of Document).
- *
+ * "Parse" an existing IR document object (not necessarily a Document instance).
  * @param object The original document object
  */
 Vex.Flow.Backend.IR.prototype.parse = function(object) {
@@ -66,8 +65,6 @@ Vex.Flow.Document = function(data, options) {
 }
 
 Vex.Flow.Document.backends = [Vex.Flow.Backend.IR, Vex.Flow.Backend.MusicXML];
-if (Vex.Flow.Backend.VexTab)
-  Vex.Flow.Documents.backends.push(Vex.Flow.Backend.VexTab);
 
 Vex.Flow.Document.prototype.init = function(data, options) {
   this.options = {};
@@ -77,6 +74,8 @@ Vex.Flow.Document.prototype.init = function(data, options) {
     this.backend = null;
     return;
   }
+
+  // Optionally pass constructor function for backend
   var backends = (typeof this.options.backend == "function")
                  ? [this.options.backend] : Vex.Flow.Document.backends;
   for (var i = 0; i < backends.length; i++) {
@@ -89,8 +88,36 @@ Vex.Flow.Document.prototype.init = function(data, options) {
     }
   }
   if (! this.backend)
-    throw new Vex.RERR("ParseError", "Data in document appears to be unsupported");
+    throw new Vex.RERR("ParseError", "Data in document is not supported");
+
+  // Must pass constructor function for formatter
+  // Formatter should inherit from Vex.Flow.Document.Formatter
+  // Formatter defaults to Vex.Flow.Document.LiquidFormatter
+  var Formatter = (typeof this.options.formatter == "function")
+                ? this.options.formatter : Vex.Flow.Document.LiquidFormatter;
+  this.formatter = new Formatter(this);
+
+  this.type = "document";
 }
+
+/**
+ * Create a formatter with a copy of the document
+ * (formatter may add clefs, etc. when formatting document)
+ * @param {Function} Class of formatter
+ * @return {Vex.Flow.Document.Formatter} Document formatter with document copy
+ */
+Vex.Flow.Document.prototype.getFormatter = function(FormatterClass) {
+  if (typeof FormatterClass != "function")
+    FormatterClass = Vex.Flow.Document.LiquidFormatter; // default class
+  return new FormatterClass(new Vex.Flow.Document(this));
+}
+
+/**
+ * Set formatter, which should inherit from Vex.Flow.Document.Formatter
+ * and have this document set as the "document" property.
+ */
+Vex.Flow.Document.prototype.setFormatter = function(formatter) {
+  this.formatter = formatter; return this; }
 
 /**
  * Number of measures in the document
@@ -103,7 +130,7 @@ Vex.Flow.Document.prototype.getNumberOfMeasures = function() {
 /**
  * Retrieve the ith measure (zero-indexed).
  * @param {Number} The zero-indexed measure to access.
- * @return {Vex.Flow.Measure} Measure object corresponding to the measure number.
+ * @return {Vex.Flow.Measure} Measure object corresponding to the measure number
  */
 Vex.Flow.Document.prototype.getMeasure = function(i) {
   if (i in this.measures) return this.measures[i];
@@ -113,7 +140,7 @@ Vex.Flow.Document.prototype.getMeasure = function(i) {
 }
 
 /**
- * Draw the complete document in the rect given by x, y, width, height with context.
+ * Draw the complete document in the rect given by x,y,width,height with context
  * @param {Object} Options (x, y, width, height, context required)
  */
 Vex.Flow.Document.prototype.draw = function(options) {
@@ -121,10 +148,7 @@ Vex.Flow.Document.prototype.draw = function(options) {
   var measure = this.getMeasure(0);
   var part = measure.getPart(0);
   var stave = part.getStave(0);
-  // Force create stave with the correct x, y, width
-  //var vfStave = stave.getVexflowStave(options.x+10, options.y, options.width-20);
   this.layoutMeasure(measure, options.x+10, options.y, options.width-20);
-  //part.draw(options.context);
   this.drawPart(part, options.context, {pieceStart: true, systemStart: true});
 }
 
@@ -158,8 +182,9 @@ Vex.Flow.Document.prototype.layoutMeasure = function(measure, x, y, width) {
  */
 Vex.Flow.Document.prototype.drawPart = function(part, context, options) {
   var staves = new Array(part.getNumberOfStaves());
-  for (var i = 0; i < part.getNumberOfStaves(); i++) staves[i] = part.getStave(i);
-  if (options && options.systemStart) // Start of system: add clef and key signature
+  for (var i = 0; i < part.getNumberOfStaves(); i++)
+    staves[i] = part.getStave(i);
+  if (options && options.systemStart) // Start of system: add clef and key
     staves.forEach(function(s) {
       if (typeof s.clef == "string") {
         s.deleteModifier("clef");
@@ -168,7 +193,8 @@ Vex.Flow.Document.prototype.drawPart = function(part, context, options) {
     });
 
   var voices = new Array(part.getNumberOfVoices());
-  for (var i = 0; i < part.getNumberOfVoices(); i++) voices[i] = part.getVoice(i);
+  for (var i = 0; i < part.getNumberOfVoices(); i++)
+    voices[i] = part.getVoice(i);
 
   // Array for each stave -> array of voices corresponding to that stave
   var voicesForStave = new Array(part.getNumberOfStaves());
@@ -196,7 +222,7 @@ Vex.Flow.Document.prototype.drawPart = function(part, context, options) {
         vfVoices[j] = voicesForStave[i][j].getVexflowVoice(staves);
       var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
       var vfStave = staves[i].getVexflowStave();
-      formatter.format(vfVoices, vfStave.getNoteEndX() - vfStave.getNoteStartX());
+      formatter.format(vfVoices, vfStave.getNoteEndX()-vfStave.getNoteStartX());
       for (var j = 0; j < vfVoices.length; j++) {
         vfVoices[j].draw(context, vfStave);
         var vfObjects = voicesForStave[i][j].getVexflowObjects();
@@ -205,3 +231,183 @@ Vex.Flow.Document.prototype.drawPart = function(part, context, options) {
       }
     }
 }
+
+/**
+ * Vex.Flow.Document.Formatter - abstract base class for formatters
+ * Accepts document as argument and draws document in discrete chunks
+ *
+ * @param {Vex.Flow.Document} Document object to retrieve information from
+ * @constructor
+ */
+Vex.Flow.Document.Formatter = function(document) {
+  if (arguments.length > 0) this.init(document);
+}
+
+Vex.Flow.Document.Formatter.prototype.init = function(document) {
+  if (typeof document != "object")
+    throw new Vex.RERR("ArgumentError",
+      "new Vex.Flow.Document.Formatter() requires Document object argument");
+  this.document = document;
+
+  // Groups of measures are contained in blocks (which could correspond to a
+  // line or a page of music.)
+  // Each block is intended to be drawn on a different canvas.
+  // Blocks must be managed by the subclass.
+  this.measuresInBlock = []; // block # -> array of measure # in block
+  this.blockDimensions = []; // block # -> [width, height]
+
+  // Store VexFlow staves, voices, objects. Stave layout managed by subclass
+  this.vfStaves = []; // measure # -> stave # -> VexFlow stave
+  this.vfVoices = []; // measure # -> voice # -> VexFlow voice
+  this.vfObjects = []; // measure # -> corresponding voice # -> all objects
+  this.staveForVoice = []; // measure # -> array of stave # for each voice
+
+  // Minimum measure widths can be used for formatting by subclasses
+  this.minMeasureWidths = [];
+}
+
+/**
+ * Vex.Flow.Document.Formatter.prototype.getStaveX: to be defined by subclass
+ * Params: m (measure #), s (stave #)
+ * Returns: x (number)
+ */
+
+/**
+ * Calculate vertical position of stave within block
+ * @param {Number} Measure number
+ * @param {Number} Stave number
+ */
+Vex.Flow.Document.Formatter.prototype.getStaveY = function(m, s) {
+  // Default behavour: calculate from stave above this one (or 0 for top stave)
+  // (Have to make sure not to call getStave on this stave)
+  if (s == 0) return 0;
+
+  var higherStave = this.getStave(m, s - 1);
+  return higherStave.y + higherStave.getHeight();
+}
+
+/**
+ * Vex.Flow.Document.Formatter.prototype.getStaveWidth: defined in subclass
+ * Params: m (measure #), s (stave #)
+ * Returns: width (number) which should be less than the minimum width
+ */
+
+/**
+ * Create a Vex.Flow.Stave from a Vex.Flow.Measure.Stave.
+ * @param {Vex.Flow.Measure.Stave} Original stave object
+ * @param {Number} x position
+ * @param {Number} y position
+ * @param {Number} width of stave
+ * @return {Vex.Flow.Stave} Generated stave object
+ */
+Vex.Flow.Document.Formatter.prototype.createVexflowStave = function(s, x,y,w) {
+  var vfStave = new Vex.Flow.Stave(x, y, w);
+  s.modifiers.forEach(function(mod) {
+    switch (mod.type) {
+      case "clef":
+        vfStave.addClef(mod.clef);
+        break;
+      // etc.
+    }
+  });
+  return vfStave;
+}
+
+/**
+ * Use getStaveX, getStaveY, getStaveWidth to create a Vex.Flow.Stave from
+ * the document and store it in vfStaves.
+ * @param {Number} Measure number
+ * @param {Number} Stave number
+ * @return {Vex.Flow.Stave} Stave for the measure and stave #
+ */
+Vex.Flow.Document.Formatter.prototype.getStave = function(m, s) {
+  if (m in this.vfStaves && s in this.vfStaves[m])
+    return this.vfStaves[m][s];
+  if (typeof this.getStaveX != "function"
+      || typeof this.getStaveWidth != "function")
+    throw new Vex.RERR("MethodNotImplemented",
+                "Document formatter must implement getStaveX, getStaveWidth");
+  var stave = this.document.getMeasure(m).getStave(s);
+  var vfStave = this.createVexflowStave(stave,
+                                        this.getStaveX(m, s),
+                                        this.getStaveY(m, s),
+                                        this.getStaveWidth(m, s));
+  if (! (m in this.vfStaves)) this.vfStaves[m] = [];
+  this.vfStaves[m][s] = vfStave;
+  return vfStave;
+}
+
+/**
+ * Get the array of all Vex.Flow.Voices for the measure, populating
+ * vfVoices, vfObjects, and staveForVoice if necessary.
+ * @param {Number} Measure number
+ * @return {Array} Array of Vex.Flow.Voices
+ */
+Vex.Flow.Document.Formatter.prototype.getVoices = function(m) {
+  if (m in this.vfVoices) return this.vfVoices[m];
+  var allVfVoices = [], allVfObjects = [], allStavesForVoices = [];
+  var measure = this.document.getMeasure(m);
+  var numParts = measure.getNumberOfParts();
+  var partFirstStave = 0; // First stave in this part
+  for (var i = 0; i < numParts; i++) {
+    var part = measure.getPart(i);
+    var partStaves = [];
+    for (var s = 0; s < part.getNumberOfStaves(); s++)
+      partStaves[s] = part.getStave(s);
+    var numVoices = part.getNumberOfVoices();
+    for (var j = 0; j < numVoices; j++) {
+      var voice = part.getVoice(j);
+      if (typeof voice.stave != "number")
+        throw new Vex.RERR("InvalidIRError", "Voice must have stave property");
+      allVfVoices.push(voice.getVexflowVoice(partStaves));
+      allVfObjects.push(voice.getVexflowObjects(partStaves));
+      allStavesForVoices.push(voice.stave + partFirstStave);
+    }
+    partFirstStave += partStaves.length;
+  }
+  this.vfVoices[m] = allVfVoices;
+  this.vfObjects[m] = allVfObjects;
+  this.staveForVoice[m] = allStavesForVoices;
+  return allVfVoices;
+}
+
+Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
+  if (! (m in this.minMeasureWidths)) {
+    var formatter = new Vex.Flow.Formatter();
+    var minWidth = formatter.preCalculateMinTotalWidth(this.getVoices(m));
+
+    // Calculate the maximum extra width on any stave (due to modifiers)
+    var maxExtraWidth = 0;
+    var measure = this.document.getMeasure(m);
+    var numParts = measure.getNumberOfParts();
+    for (var i = 0; i < numParts; i++) {
+      var part = measure.getPart(i);
+      var numStaves = part.getNumberOfStaves();
+      for (var j = 0; j < numStaves; j++) {
+        var stave = part.getStave(j);
+        var vfStave = this.createVexflowStave(stave, 0, 0, 500);
+        var extraWidth = 500 - (vfStave.getNoteEndX()-vfStave.getNoteStartX());
+        if (extraWidth > maxExtraWidth) maxExtraWidth = extraWidth;
+      }
+    }
+    minWidth += maxExtraWidth;
+    this.minMeasureWidths[m] = minWidth;
+  }
+  return this.minMeasureWidths[m];
+}
+
+/**
+ * Vex.Flow.Document.LiquidFormatter - default liquid formatter
+ * Fit measures onto lines with a given width, in blocks of 1 line of music
+ *
+ * @constructor
+ */
+Vex.Flow.Document.LiquidFormatter = function(document) {
+  if (arguments.length > 0) Vex.Flow.Document.Formatter.call(this, document);
+  this.width = 500; // default value
+}
+Vex.Flow.Document.LiquidFormatter.prototype = new Vex.Flow.Document.Formatter();
+Vex.Flow.Document.LiquidFormatter.constructor=Vex.Flow.Document.LiquidFormatter;
+
+Vex.Flow.Document.LiquidFormatter.prototype.setWidth = function(width) {
+  this.width = width; return this; }

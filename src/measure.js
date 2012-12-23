@@ -108,7 +108,7 @@ Vex.Flow.Measure.Part = function(object) {
       this.staves = new Array(object.staves);
     else this.staves = new Array(1);
 
-    // Convenience options which can set on a part instead of a stave
+    // Convenience options which can be set on a part instead of a stave
     this.staveOptions = {};
     if (typeof object.clef == "string") this.staveOptions.clef = object.clef;
   }
@@ -209,7 +209,7 @@ Vex.Flow.Measure.Voice.prototype.addNote = function(note) {
 /**
  * Create a Vex.Flow.Voice with a StaveNote for each note.
  * Each note is added to the proper Vex.Flow.Measure.Stave in staves
- * (spanning multiple staves in a single voice not currently supported by VexFlow.)
+ * (spanning multiple staves in a single voice not currently supported.)
  * @param {Array} Staves to add the notes to
  */
 Vex.Flow.Measure.Voice.prototype.getVexflowVoice = function(staves) {
