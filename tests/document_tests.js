@@ -1,5 +1,5 @@
 /**
- * VexFlow - Document Tests (JSON, MusicXML and TabDiv)
+ * VexFlow - Document Tests (JSON and MusicXML)
  * @author Daniel Ringwalt (ringw)
  */
 
@@ -16,7 +16,7 @@ Vex.Flow.Test.Document.Start = function() {
 };
 
 Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
-  expect(11);
+  expect(13);
   // Custom backend programmatically generates measures
   var CustomBackend = function() {};
   CustomBackend.appearsValid = function(arg) { return true; };
@@ -26,11 +26,11 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
   CustomBackend.prototype.getMeasure = function(i) {
     var time = {num_beats: 4, beat_value: 4};
     var measure = new Vex.Flow.Measure({time: time});
-    measure.setPart(0, {time: time, clef: "treble"});
-    measure.addNote({keys: ["c/4"], duration: "4"});
+    measure.setPart(0, {time: time, clef: "treble", key: "D"});
     measure.addNote({keys: ["d/4"], duration: "4"});
     measure.addNote({keys: ["e/4"], duration: "4"});
-    measure.addNote({keys: ["f/4"], duration: "4"});
+    measure.addNote({keys: ["f#/4"], duration: "4"});
+    measure.addNote({keys: ["g/4"], duration: "4"});
     ok(true, "added notes to measure");
     return measure;
   };
@@ -51,8 +51,14 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
   var voice = part.getVoice(0);
   ok(voice instanceof Vex.Flow.Measure.Voice, "voice from part");
 
+  var formatter = doc.getFormatter();
+  ok(formatter instanceof Vex.Flow.Document.LiquidFormatter, "formatter ok");
+  formatter.setWidth(300);
+  var block = formatter.getBlock(0);
+  ok(block[0] == 300, "block has correct width");
+
   var ctx = new contextBuilder(options.canvas_sel, 300, 120);
-  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  formatter.drawBlock(0, ctx);
   ok(true, "drew document");
 }
 
@@ -62,6 +68,8 @@ Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {
    {type: "measure", time: {num_beats: 4, beat_value: 4},
     parts: [
      {type: "part", time: {num_beats: 4, beat_value: 4}, clef: "treble",
+      // TODO: remove staves when we don't need it
+      staves: [{type: "stave", time: {num_beats: 4, beat_value: 4}}],
       voices: [
        {type: "voice", time: {num_beats: 4, beat_value: 4},
         notes: [
@@ -89,7 +97,7 @@ Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {
   ok(measure instanceof Vex.Flow.Measure, "created measure");
 
   var ctx = new contextBuilder(options.canvas_sel, 300, 120);
-  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  doc.getFormatter().setWidth(300).drawBlock(0, ctx);
   ok(true, "drew document");
 }
 
@@ -137,7 +145,7 @@ Vex.Flow.Test.Document.jsonComplex = function(options, contextBuilder) {
   ok(measure instanceof Vex.Flow.Measure, "created measure");
 
   var ctx = new contextBuilder(options.canvas_sel, 300, 220);
-  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  doc.getFormatter().setWidth(300).drawBlock(0, ctx);
   ok(true, "drew document");
 }
 
@@ -185,7 +193,7 @@ Vex.Flow.Test.Document.xmlSimple = function(options, contextBuilder) {
   ok(true, "created document");
 
   var ctx = new contextBuilder(options.canvas_sel, 300, 120);
-  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  doc.getFormatter().setWidth(300).drawBlock(0, ctx);
   ok(true, "drew document");
 }
 Vex.Flow.Test.Document.Fetch = function(uri) {

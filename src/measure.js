@@ -10,7 +10,7 @@ Vex.Flow.Measure = function(object) {
   if (! object.time || ! object.time.num_beats || ! object.time.beat_value)
     throw new Vex.RERR("ArgumentError",
               "Measure must be initialized with nonzero num_beats and beat_value");
-  this.time = object.time;
+  this.time = Vex.Merge({}, object.time);
 
   this.attributes = {};
   if (typeof object.attributes == "object")
@@ -51,6 +51,10 @@ Vex.Flow.Measure.prototype.setPart = function(partNum, part) {
     throw new Vex.RERR("ArgumentError", "Set number of parts before adding part");
   this.parts[partNum] = new Vex.Flow.Measure.Part(part);
 }
+Vex.Flow.Measure.prototype.getParts = function() {
+  for (var i = 0; i < this.parts.length; i++) this.getPart(i);
+  return this.parts;
+}
 
 Vex.Flow.Measure.prototype.getNumberOfStaves = function() {
   // Sum number of staves from each part
@@ -67,6 +71,11 @@ Vex.Flow.Measure.prototype.getStave = function(staveNum) {
       return part.getStave(staveNum - firstStaveForPart);
   }
   return undefined;
+}
+Vex.Flow.Measure.prototype.getStaves = function() {
+  var staves = new Array(this.getNumberOfStaves());
+  for (var i = 0; i < staves.length; i++) staves.push(this.getStave(i));
+  return staves;
 }
 
 /**
@@ -91,26 +100,38 @@ Vex.Flow.Measure.Part = function(object) {
   if (! object.time || ! object.time.num_beats || ! object.time.beat_value)
     throw new Vex.RERR("ArgumentError",
                        "Constructor requires nonzero num_beats and beat_value");
-  this.time = object.time;
+  this.time = Vex.Merge({}, object.time);
   if (object.voices instanceof Array) {
     this.voices = new Array(object.voices.length);
     for (var i = 0; i < object.voices.length; i++)
       this.voices[i] = new Vex.Flow.Measure.Voice(object.voices[i]);
   }
   else this.voices = new Array(1); // Default to single voice
+
+  // Convenience options which can be set on a part instead of a stave
+  this.staveOptions = {time: this.time};
+  if (typeof object.clef == "string") this.staveOptions.clef = object.clef;
+  if (typeof object.key == "string") this.staveOptions.key = object.key;
+  if (typeof object.time_signature == "string")
+    this.staveOptions.time_signature = object.time_signature;
   if (object.staves instanceof Array) {
-    this.staves = new Array(object.staves.length);
-    for (var i = 0; i < object.staves.length; i++)
-      this.staves[i] = new Vex.Flow.Measure.Stave(object.staves[i]);
+    var staves = this.staves = new Array(object.staves.length);
+    var staveOptions = this.staveOptions;
+    var i = 0;
+    object.staves.forEach(function(stave) {
+      var staveObj;
+      if (typeof stave == "string") // interpret stave as clef value
+        staveObj = Vex.Merge({clef: stave}, staveOptions);
+      // Copy staveOptions and overwrite with options from argument
+      else staveObj = Vex.Merge(Vex.Merge({}, staveOptions), stave);
+      staves[i] = new Vex.Flow.Measure.Stave(staveObj);
+      i++;
+    });
   }
   else {
     if (typeof object.staves == "number")
       this.staves = new Array(object.staves);
     else this.staves = new Array(1);
-
-    // Convenience options which can be set on a part instead of a stave
-    this.staveOptions = {};
-    if (typeof object.clef == "string") this.staveOptions.clef = object.clef;
   }
 
   this.type = "part";
@@ -177,7 +198,7 @@ Vex.Flow.Measure.Voice = function(object) {
   if (! object.time || ! object.time.num_beats || ! object.time.beat_value)
     throw new Vex.RERR("ArgumentError",
                        "Constructor requires nonzero num_beats and beat_value");
-  this.time = object.time;
+  this.time = Vex.Merge({}, object.time);
   // etc
   if (object.notes instanceof Array) {
     this.notes = new Array(object.notes.length);
@@ -259,8 +280,9 @@ Vex.Flow.Measure.Stave = function(object) {
   if (! object.time || ! object.time.num_beats || ! object.time.beat_value)
     throw new Vex.RERR("ArgumentError",
                        "Constructor requires nonzero num_beats and beat_value");
-  this.time = object.time;
-  this.clef = (typeof object.clef == "string") ? object.clef : undefined;
+  this.time = Vex.Merge({}, object.time);
+  this.clef = (typeof object.clef == "string") ? object.clef : null;
+  this.key = (typeof object.key == "string") ? object.key : null;
   this.modifiers = new Array();
   if (object.modifiers instanceof Array) {
     for (var i = 0; i < object.modifiers.length; i++)
@@ -281,7 +303,7 @@ Vex.Flow.Measure.Stave = function(object) {
 Vex.Flow.Measure.Stave.prototype.addModifier = function(modifier) {
   // Type is required for modifiers
   if (typeof modifier != "object" || typeof modifier.type != "string")
-    throw new Vex.RERR("InvalidIRError", "Modifier requires type property");
+    throw new Vex.RERR("InvalidIRError", "Modifier requires type string property");
   var newModifier = {type: modifier.type}; // copy modifier
   switch (modifier.type) {
     case "clef":
@@ -289,10 +311,30 @@ Vex.Flow.Measure.Stave.prototype.addModifier = function(modifier) {
         throw new Vex.RERR("InvalidIRError", "Clef modifier requires clef string");
       newModifier.clef = modifier.clef;
       break;
+    case "key":
+      if (typeof modifier.key != "string")
+        throw new Vex.RERR("InvalidIRError", "Key modifier requires key string");
+      newModifier.key = modifier.key;
+      break;
+    case "time":
+      if (! modifier.num_beats || ! modifier.beat_value)
+        throw new Vex.RERR("InvalidIRError",
+                    "Time modifier requires nonzero num_beats and beat_value");
+      newModifier.num_beats = modifier.num_beats;
+      newModifier.beat_value = modifier.beat_value;
+      break;
     default:
       throw new Vex.RERR("InvalidIRError", "Modifier not recognized");
   }
   this.modifiers.push(newModifier);
+}
+
+/**
+ * Find the modifier with the given type, or return null.
+ */
+Vex.Flow.Measure.Stave.prototype.getModifier = function(type) {
+  this.modifiers.forEach(function(mod) { if (mod.type == type) return mod; });
+  return null;
 }
 
 /**
@@ -366,6 +408,8 @@ Vex.Flow.Measure.Note = function(object) {
 Vex.Flow.Measure.Note.prototype.getVexflowNote = function(options) {
   if (! this._vexflowNote) {
     var note_struct = Vex.Merge({}, options);
+    if ("clef" in note_struct && typeof note_struct.clef != "string")
+      delete note_struct.clef; // FIXME
     note_struct.keys = this.keys;
     note_struct.duration = this.duration;
     if (this.stem_direction) note_struct.stem_direction = this.stem_direction;

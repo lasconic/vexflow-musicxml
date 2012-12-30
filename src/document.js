@@ -21,6 +21,12 @@ Vex.Flow.Backend.IR.prototype.parse = function(object) {
   if (! Vex.Flow.Backend.IR.appearsValid(object))
     throw new Vex.RERR("InvalidArgument", "IR object must be a valid document");
   
+  // Force a first-class document object to get all measures
+  if (typeof object.getNumberOfMeasures == "function"
+      && typeof object.getMeasure == "function") {
+    var numMeasures = object.getNumberOfMeasures();
+    for (var i = 0; i < numMeasures; i++) object.getMeasure(i);
+  }
   this.documentObject = object;
   this.valid = true;
 }
@@ -90,13 +96,6 @@ Vex.Flow.Document.prototype.init = function(data, options) {
   if (! this.backend)
     throw new Vex.RERR("ParseError", "Data in document is not supported");
 
-  // Must pass constructor function for formatter
-  // Formatter should inherit from Vex.Flow.Document.Formatter
-  // Formatter defaults to Vex.Flow.Document.LiquidFormatter
-  var Formatter = (typeof this.options.formatter == "function")
-                ? this.options.formatter : Vex.Flow.Document.LiquidFormatter;
-  this.formatter = new Formatter(this);
-
   this.type = "document";
 }
 
@@ -106,18 +105,12 @@ Vex.Flow.Document.prototype.init = function(data, options) {
  * @param {Function} Class of formatter
  * @return {Vex.Flow.Document.Formatter} Document formatter with document copy
  */
-Vex.Flow.Document.prototype.getFormatter = function(FormatterClass) {
+Vex.Flow.Document.prototype.getFormatter = function(formatterClass) {
+  var Formatter = formatterClass;
   if (typeof FormatterClass != "function")
-    FormatterClass = Vex.Flow.Document.LiquidFormatter; // default class
-  return new FormatterClass(new Vex.Flow.Document(this));
+    Formatter = Vex.Flow.Document.LiquidFormatter; // default class
+  return new Formatter(new Vex.Flow.Document(this));
 }
-
-/**
- * Set formatter, which should inherit from Vex.Flow.Document.Formatter
- * and have this document set as the "document" property.
- */
-Vex.Flow.Document.prototype.setFormatter = function(formatter) {
-  this.formatter = formatter; return this; }
 
 /**
  * Number of measures in the document
@@ -137,99 +130,6 @@ Vex.Flow.Document.prototype.getMeasure = function(i) {
   var measure = this.backend.getMeasure(i);
   this.measures[i] = measure;
   return measure;
-}
-
-/**
- * Draw the complete document in the rect given by x,y,width,height with context
- * @param {Object} Options (x, y, width, height, context required)
- */
-Vex.Flow.Document.prototype.draw = function(options) {
-  // TODO: Multiple measure/stave support
-  var measure = this.getMeasure(0);
-  var part = measure.getPart(0);
-  var stave = part.getStave(0);
-  this.layoutMeasure(measure, options.x+10, options.y, options.width-20);
-  this.drawPart(part, options.context, {pieceStart: true, systemStart: true});
-}
-
-/**
- * Lay out staves in the measure, starting from (x, y).
- * Return coordinates {x, y, width, height} of the entire measure.
- */
-Vex.Flow.Document.prototype.layoutMeasure = function(measure, x, y, width) {
-  // Join staves from all parts in one array
-  var staves = new Array();
-  var numParts = measure.getNumberOfParts();
-  for (var i = 0; i < numParts; i++) {
-    var part = measure.getPart(i);
-    var numStaves = part.getNumberOfStaves();
-    for (var j = 0; j < numStaves; j++) staves.push(part.getStave(j));
-  }
-
-  // Lay out each stave
-  var origY = y;
-  for (var i = 0; i < staves.length; i++) {
-    staves[i].setX(x);
-    staves[i].setY(y);
-    staves[i].setWidth(width);
-    y += staves[i].getHeight();
-  }
-  return {x: x, y: origY, width: width, height: y - origY};
-}
-
-/**
- * Draw staves and voices of a part. (The measure must be laid out first.)
- */
-Vex.Flow.Document.prototype.drawPart = function(part, context, options) {
-  var staves = new Array(part.getNumberOfStaves());
-  for (var i = 0; i < part.getNumberOfStaves(); i++)
-    staves[i] = part.getStave(i);
-  if (options && options.systemStart) // Start of system: add clef and key
-    staves.forEach(function(s) {
-      if (typeof s.clef == "string") {
-        s.deleteModifier("clef");
-        s.addModifier({type: "clef", clef: s.clef});
-      }
-    });
-
-  var voices = new Array(part.getNumberOfVoices());
-  for (var i = 0; i < part.getNumberOfVoices(); i++)
-    voices[i] = part.getVoice(i);
-
-  // Array for each stave -> array of voices corresponding to that stave
-  var voicesForStave = new Array(part.getNumberOfStaves());
-  if (staves.length == 1) {
-    for (var i = 0; i < voices.length; i++) voices[i].stave = 0;
-    voicesForStave[0] = voices;
-  }
-  else {
-    for (var i = 0; i < voices.length; i++) {
-      if (typeof voices[i].stave != "number")
-        throw new Vex.RERR("InvalidIRError",
-                           "Voice in multi-stave part requires stave property");
-      if (voices[i].stave in voicesForStave)
-        voicesForStave[voices[i].stave].push(voices[i]);
-      else
-        voicesForStave[voices[i].stave] = [voices[i]];
-    }
-  }
-  for (var i = 0; i < staves.length; i++)
-    staves[i].getVexflowStave().setContext(context).draw();
-  for (var i = 0; i < staves.length; i++)
-    if (voicesForStave[i] instanceof Array) {
-      var vfVoices = new Array();
-      for (var j = 0; j < voicesForStave[i].length; j++)
-        vfVoices[j] = voicesForStave[i][j].getVexflowVoice(staves);
-      var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
-      var vfStave = staves[i].getVexflowStave();
-      formatter.format(vfVoices, vfStave.getNoteEndX()-vfStave.getNoteStartX());
-      for (var j = 0; j < vfVoices.length; j++) {
-        vfVoices[j].draw(context, vfStave);
-        var vfObjects = voicesForStave[i][j].getVexflowObjects();
-        for (var obj = 0; obj < vfObjects.length; obj++)
-          vfObjects[obj].setContext(context).draw();
-      }
-    }
 }
 
 /**
@@ -261,6 +161,7 @@ Vex.Flow.Document.Formatter.prototype.init = function(document) {
   this.vfVoices = []; // measure # -> voice # -> VexFlow voice
   this.vfObjects = []; // measure # -> corresponding voice # -> all objects
   this.staveForVoice = []; // measure # -> array of stave # for each voice
+  this.measureOptions = []; // measure # -> object of drawing options
 
   // Minimum measure widths can be used for formatting by subclasses
   this.minMeasureWidths = [];
@@ -304,10 +205,14 @@ Vex.Flow.Document.Formatter.prototype.createVexflowStave = function(s, x,y,w) {
   var vfStave = new Vex.Flow.Stave(x, y, w);
   s.modifiers.forEach(function(mod) {
     switch (mod.type) {
-      case "clef":
-        vfStave.addClef(mod.clef);
+      case "clef": vfStave.addClef(mod.clef); break;
+      case "key": vfStave.addKeySignature(mod.key); break;
+      case "time":
+        var time_sig;
+        if (typeof mod.time == "string") time_sig = mod.time;
+        else time_sig = mod.num_beats.toString() + "/" + mod.beat_value.toString();
+        vfStave.addTimeSignature(time_sig);
         break;
-      // etc.
     }
   });
   return vfStave;
@@ -328,6 +233,19 @@ Vex.Flow.Document.Formatter.prototype.getStave = function(m, s) {
     throw new Vex.RERR("MethodNotImplemented",
                 "Document formatter must implement getStaveX, getStaveWidth");
   var stave = this.document.getMeasure(m).getStave(s);
+  if (! stave) return undefined;
+  // Add stave modifiers for options
+  var options = this.measureOptions[m];
+  if (options) {
+    if (options.system_start && stave.clef && ! stave.getModifier("clef"))
+      stave.addModifier({type:"clef", clef:stave.clef});
+    if (options.system_start && stave.key && ! stave.getModifier("key"))
+      stave.addModifier({type:"key", key:stave.key});
+    if (options.piece_start && stave.time_signature && ! stave.getModifier("time"))
+      stave.addModifier({type:"time", time:stave.time_signature});
+    else if (options.piece_start && stave.time && ! stave.getModifier("time"))
+      stave.addModifier(Vex.Merge({type:"time"}, stave.time));
+  }
   var vfStave = this.createVexflowStave(stave,
                                         this.getStaveX(m, s),
                                         this.getStaveY(m, s),
@@ -372,7 +290,7 @@ Vex.Flow.Document.Formatter.prototype.getVoices = function(m) {
 }
 
 Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
-  if (! (m in this.minMeasureWidths)) {
+  if (! this.minMeasureWidths || ! (m in this.minMeasureWidths)) {
     var formatter = new Vex.Flow.Formatter();
     var minWidth = formatter.preCalculateMinTotalWidth(this.getVoices(m));
 
@@ -394,6 +312,101 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
     this.minMeasureWidths[m] = minWidth;
   }
   return this.minMeasureWidths[m];
+};
+
+// Internal drawing functions
+// DRAWING OPTIONS - stored in this.measureOptions
+// * system_start: start of system (line), always draw clef and key signature
+//                 connect all staves, multiple staves in a part may have a brace
+// * piece_start: start of piece, always draw clef, key, time signature
+//                Also implies system_start
+// * DEFAULT: connect staves within same part, only draw given modifiers
+(function(){
+  function drawPart(part, vfStaves, context, options) {
+    var staves = new Array(part.getNumberOfStaves());
+    for (var i = 0; i < part.getNumberOfStaves(); i++)
+      staves[i] = part.getStave(i);
+    if (options && options.systemStart) // Start of system: add clef and key
+      staves.forEach(function(s) {
+        if (typeof s.clef == "string") {
+          s.deleteModifier("clef");
+          s.addModifier({type: "clef", clef: s.clef});
+        }
+      });
+
+    var voices = new Array(part.getNumberOfVoices());
+    for (var i = 0; i < part.getNumberOfVoices(); i++)
+      voices[i] = part.getVoice(i);
+
+    // Array for each stave -> array of voices corresponding to that stave
+    // TODO: Set stave for each voice, then format all voices together
+    var voicesForStave = new Array(part.getNumberOfStaves());
+    if (staves.length == 1) {
+      for (var i = 0; i < voices.length; i++) voices[i].stave = 0;
+      voicesForStave[0] = voices;
+    }
+    else
+      voices.forEach(function(voice) {
+        if (typeof voice.stave != "number")
+          throw new Vex.RERR("InvalidIRError",
+                             "Voice in multi-stave part needs stave property");
+        if (voice.stave in voicesForStave)
+          voicesForStave[voice.stave].push(voice);
+        else
+          voicesForStave[voice.stave] = [voice];
+      });
+    vfStaves.forEach(function(stave) { stave.setContext(context).draw(); });
+    for (var i = 0; i < staves.length; i++)
+      if (voicesForStave[i] instanceof Array) {
+        var vfVoices = new Array();
+        for (var j = 0; j < voicesForStave[i].length; j++)
+          vfVoices[j] = voicesForStave[i][j].getVexflowVoice(staves);
+        var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
+        formatter.format(vfVoices, vfStaves[i].getNoteEndX()-vfStaves[i].getNoteStartX());
+        for (var j = 0; j < vfVoices.length; j++) {
+          vfVoices[j].draw(context, vfStaves[i]);
+          var vfObjects = voicesForStave[i][j].getVexflowObjects();
+          for (var obj = 0; obj < vfObjects.length; obj++)
+            vfObjects[obj].setContext(context).draw();
+        }
+      }
+  }
+
+  function drawMeasure(measure, vfStaves, context, options) {
+    var startStave = 0;
+    measure.getParts().forEach(function(part) {
+      var numStaves = part.getNumberOfStaves();
+      var partStaves = vfStaves.slice(startStave, startStave + numStaves);
+      drawPart(part, partStaves, context, options);
+      startStave += numStaves;
+    });
+    if ((options.system_start || options.piece_start)
+        && vfStaves.length > 1) {
+      var connector = new Vex.Flow.StaveConnector(vfStaves[0],
+                                                  vfStaves[vfStaves.length - 1]);
+      connector.setType(Vex.Flow.StaveConnector.type.SINGLE);
+      connector.setContext(context).draw();
+    }
+  }
+  
+  Vex.Flow.Document.Formatter.prototype.drawBlock = function(b, context) {
+    this.getBlock(b);
+    var formatter = this;
+    this.measuresInBlock[b].forEach(function(m) {
+      var stave = 0;
+      while (formatter.getStave(m, stave)) stave++;
+      drawMeasure(formatter.document.getMeasure(m), formatter.vfStaves[m],
+                  context, formatter.measureOptions[m]);
+    });
+  }
+})();
+
+Vex.Flow.Document.Formatter.prototype.drawMeasure = function(m, ctx, options) {
+  for (var i = 0; i < m.getNumberOfParts(); i++)
+    this.drawPart(m.getPart(i), ctx, options);
+}
+
+Vex.Flow.Document.Formatter.prototype.drawPart = function(part, ctx, options) {
 }
 
 /**
@@ -411,3 +424,89 @@ Vex.Flow.Document.LiquidFormatter.constructor=Vex.Flow.Document.LiquidFormatter;
 
 Vex.Flow.Document.LiquidFormatter.prototype.setWidth = function(width) {
   this.width = width; return this; }
+
+Vex.Flow.Document.LiquidFormatter.prototype.getBlock = function(b) {
+  if (b in this.blockDimensions) return this.blockDimensions[b];
+
+  var startMeasure = 0;
+  if (b > 0) {
+    this.getBlock(b - 1);
+    var prevMeasures = this.measuresInBlock[b - 1];
+    startMeasure = prevMeasures[prevMeasures.length - 1] + 1;
+  }
+  var numMeasures = this.document.getNumberOfMeasures();
+  if (startMeasure >= numMeasures) return null;
+  
+  // Store x, width of staves (y calculated automatically)
+  if (! this.measureX) this.measureX = new Array();
+  if (! this.measureWidth) this.measureWidth = new Array();
+
+  this.measureOptions[startMeasure] = {system_start: true, piece_start: (b == 0)};
+
+  if (this.getMinMeasureWidth(startMeasure) + 20 >= this.width) {
+    // Use only this measure and the minimum possible width
+    var block = [this.getMinMeasureWidth(startMeasure)+20, 0];
+    this.blockDimensions[b] = block;
+    this.measuresInBlock[b] = [startMeasure];
+    this.measureX[startMeasure] = 10;
+    this.measureWidth[startMeasure] = block.width - 20;
+  }
+  else {
+    var curMeasure = startMeasure;
+    var width = 20;
+    while (width < this.width && curMeasure < numMeasures) {
+      width += this.getMinMeasureWidth(curMeasure);
+      curMeasure++;
+    }
+    var endMeasure = curMeasure - 1;
+    var measureRange = [];
+    for (var m = startMeasure; m <= endMeasure; m++) measureRange.push(m);
+    this.measuresInBlock[b] = measureRange;
+
+    var remainingWidth = this.width - 20; // Allocate width to measures
+    for (var m = startMeasure; m <= endMeasure; m++) {
+      // Set each width to the minimum
+      this.measureWidth[m] = Math.ceil(this.getMinMeasureWidth(m));
+      remainingWidth -= this.measureWidth[m];
+    }
+    // Split rest of width evenly
+    var extraWidth = Math.floor(remainingWidth / (endMeasure-startMeasure + 1));
+    for (var m = startMeasure; m <= endMeasure; m++)
+      this.measureWidth[m] += extraWidth;
+    remainingWidth -= extraWidth * (endMeasure - startMeasure + 1);
+    this.measureWidth[startMeasure] += remainingWidth; // Add remainder
+    // Calculate x value for each measure
+    this.measureX[startMeasure] = 10;
+    for (var m = startMeasure + 1; m <= endMeasure; m++)
+      this.measureX[m] = this.measureX[m-1] + this.measureWidth[m-1];
+    this.blockDimensions[b] = [this.width, 0];
+  }
+
+  // Calculate height of first measure, use as total height
+  var i = 0;
+  var lastStave = undefined;
+  var stave = this.getStave(startMeasure, 0);
+  while (stave) {
+    lastStave = stave;
+    i++;
+    stave = this.getStave(startMeasure, i);
+  }
+  var height = this.getStaveY(startMeasure, i-1) + lastStave.getHeight();
+  this.blockDimensions[b][1] = height;
+
+  return this.blockDimensions[b];
+}
+
+Vex.Flow.Document.LiquidFormatter.prototype.getStaveX = function(m, s) {
+  if (! (m in this.measureX))
+    throw new Vex.RERR("FormattingError",
+                "Creating stave for measure which does not belong to a block");
+  return this.measureX[m];
+}
+
+Vex.Flow.Document.LiquidFormatter.prototype.getStaveWidth = function(m, s) {
+  if (! (m in this.measureWidth))
+    throw new Vex.RERR("FormattingError",
+                "Creating stave for measure which does not belong to a block");
+  return this.measureWidth[m];
+}
