@@ -204,6 +204,7 @@ Vex.Flow.Test.Document.Fetch = function(uri) {
   return req.responseText;
 };
 Vex.Flow.Test.Document.xmlDoc = function(options, contextBuilder) {
+  function ok(status_bool, msg) {if (console && console.log) console.log(msg);}
   var docString;
   try {
     docString = Vex.Flow.Test.Document.Fetch("support/bach_bwv846p.xml");
@@ -221,6 +222,9 @@ Vex.Flow.Test.Document.xmlDoc = function(options, contextBuilder) {
   ok(true, "created document");
 
   var ctx = new contextBuilder(options.canvas_sel, 300, 120);
-  doc.draw({x: 0, y: 0, width: 300, height: 120, context: ctx});
+  var elem = document.createElement("div");
+  elem.id = "vexflow_test_document";
+  $("#vexflow_testoutput")[0].appendChild(elem);
+  doc.getFormatter().draw(elem);
   ok(true, "drew document");
 };

@@ -344,8 +344,9 @@ Vex.Flow.Measure.Stave.prototype.addModifier = function(modifier) {
  * Find the modifier with the given type, or return null.
  */
 Vex.Flow.Measure.Stave.prototype.getModifier = function(type) {
-  this.modifiers.forEach(function(mod) { if (mod.type == type) return mod; });
-  return null;
+  var mod = null;
+  this.modifiers.forEach(function(m) { if (m.type == type) mod = m; });
+  return mod;
 }
 
 /**

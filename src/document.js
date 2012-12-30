@@ -379,6 +379,15 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
 })();
 
 /**
+ * Vex.Flow.Document.Formatter.prototype.draw - defined in subclass
+ * Render document inside HTML element, creating canvases, etc.
+ * Called a second time to update as necessary if the width of the element
+ * changes, etc.
+ * @param {Node} HTML node to draw inside
+ * @param {Object} Subclass-specific options
+ */
+
+/**
  * Vex.Flow.Document.LiquidFormatter - default liquid formatter
  * Fit measures onto lines with a given width, in blocks of 1 line of music
  *
@@ -497,4 +506,57 @@ Vex.Flow.Document.LiquidFormatter.prototype.getStaveWidth = function(m, s) {
     throw new Vex.RERR("FormattingError",
                 "Creating stave for measure which does not belong to a block");
   return this.measureWidth[m];
+}
+
+Vex.Flow.Document.LiquidFormatter.prototype.draw = function(elem, options) {
+  if (this._htmlElem != elem) {
+    this._htmlElem = elem;
+    elem.innerHTML = "";
+    this.canvases = [];
+  }
+  var width = $(elem).width(); // TODO: can we use jQuery?
+  if (typeof width == "number") {
+    if (width != this.width) {
+      // Invalidate all blocks/staves/voices
+      this.measuresInBlock = [];
+      this.blockDimensions = [];
+      this.vfStaves = [];
+      this.vfVoices = [];
+      this.vfObjects = [];
+      this.staveForVoice = [];
+      this.measureX = [];
+      this.measureWidth = [];
+    }
+    this.setWidth(width);
+  }
+  var b = 0;
+  while (this.getBlock(b)) {
+    var canvas, context;
+    if (! this.canvases[b]) {
+      canvas = document.createElement('canvas');
+      canvas.width = this.blockDimensions[b][0];
+      canvas.height = this.blockDimensions[b][1];
+      if (typeof elem.id == "string")
+        canvas.id = elem.id + "_canvas" + b.toString();
+      // If a canvas exists after this one, insert before that canvas
+      for (var a = b + 1; this.getBlock(a); a++)
+        if (typeof this.canvases[a] == "object") {
+          elem.insertBefore(canvas, this.canvases[a]);
+          break;
+        }
+      if (! canvas.parentNode)
+        elem.appendChild(canvas); // Insert at the end of elem
+      this.canvases[b] = canvas;
+      context = canvas.getContext("2d");
+    }
+    else {
+      canvas = this.canvases[b];
+      canvas.width = this.width;
+      var context = canvas.getContext("2d");
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    this.drawBlock(b, context);
+    b++;
+  }
+  // TODO: remove old canvases/other elements
 }
