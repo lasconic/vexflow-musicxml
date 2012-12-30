@@ -161,7 +161,6 @@ Vex.Flow.Document.Formatter.prototype.init = function(document) {
   this.vfVoices = []; // measure # -> voice # -> VexFlow voice
   this.vfObjects = []; // measure # -> corresponding voice # -> all objects
   this.staveForVoice = []; // measure # -> array of stave # for each voice
-  this.measureOptions = []; // measure # -> object of drawing options
 
   // Minimum measure widths can be used for formatting by subclasses
   this.minMeasureWidths = [];
@@ -234,18 +233,6 @@ Vex.Flow.Document.Formatter.prototype.getStave = function(m, s) {
                 "Document formatter must implement getStaveX, getStaveWidth");
   var stave = this.document.getMeasure(m).getStave(s);
   if (! stave) return undefined;
-  // Add stave modifiers for options
-  var options = this.measureOptions[m];
-  if (options) {
-    if (options.system_start && stave.clef && ! stave.getModifier("clef"))
-      stave.addModifier({type:"clef", clef:stave.clef});
-    if (options.system_start && stave.key && ! stave.getModifier("key"))
-      stave.addModifier({type:"key", key:stave.key});
-    if (options.piece_start && stave.time_signature && ! stave.getModifier("time"))
-      stave.addModifier({type:"time", time:stave.time_signature});
-    else if (options.piece_start && stave.time && ! stave.getModifier("time"))
-      stave.addModifier(Vex.Merge({type:"time"}, stave.time));
-  }
   var vfStave = this.createVexflowStave(stave,
                                         this.getStaveX(m, s),
                                         this.getStaveY(m, s),
@@ -326,13 +313,6 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
     var staves = new Array(part.getNumberOfStaves());
     for (var i = 0; i < part.getNumberOfStaves(); i++)
       staves[i] = part.getStave(i);
-    if (options && options.systemStart) // Start of system: add clef and key
-      staves.forEach(function(s) {
-        if (typeof s.clef == "string") {
-          s.deleteModifier("clef");
-          s.addModifier({type: "clef", clef: s.clef});
-        }
-      });
 
     var voices = new Array(part.getNumberOfVoices());
     for (var i = 0; i < part.getNumberOfVoices(); i++)
@@ -380,7 +360,8 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
       drawPart(part, partStaves, context, options);
       startStave += numStaves;
     });
-    if ((options.system_start || options.piece_start)
+    if (typeof options == "object"
+        && (options.system_start || options.piece_start)
         && vfStaves.length > 1) {
       var connector = new Vex.Flow.StaveConnector(vfStaves[0],
                                                   vfStaves[vfStaves.length - 1]);
@@ -391,23 +372,14 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
   
   Vex.Flow.Document.Formatter.prototype.drawBlock = function(b, context) {
     this.getBlock(b);
-    var formatter = this;
+    var that = this;
     this.measuresInBlock[b].forEach(function(m) {
       var stave = 0;
-      while (formatter.getStave(m, stave)) stave++;
-      drawMeasure(formatter.document.getMeasure(m), formatter.vfStaves[m],
-                  context, formatter.measureOptions[m]);
+      while (that.getStave(m, stave)) stave++;
+      drawMeasure(that.document.getMeasure(m), that.vfStaves[m], context);
     });
   }
 })();
-
-Vex.Flow.Document.Formatter.prototype.drawMeasure = function(m, ctx, options) {
-  for (var i = 0; i < m.getNumberOfParts(); i++)
-    this.drawPart(m.getPart(i), ctx, options);
-}
-
-Vex.Flow.Document.Formatter.prototype.drawPart = function(part, ctx, options) {
-}
 
 /**
  * Vex.Flow.Document.LiquidFormatter - default liquid formatter
@@ -436,12 +408,29 @@ Vex.Flow.Document.LiquidFormatter.prototype.getBlock = function(b) {
   }
   var numMeasures = this.document.getNumberOfMeasures();
   if (startMeasure >= numMeasures) return null;
+
+  // Update modifiers for first measure
+  this.document.getMeasure(startMeasure).getParts().forEach(function(part) {
+    part.getStaves().forEach(function(s) {
+      if (typeof s.clef == "string" && ! s.getModifier("clef")) {
+        s.addModifier({type: "clef", clef: s.clef});
+      }
+      if (typeof s.key == "string" && ! s.getModifier("key")) {
+        s.addModifier({type: "key", key: s.key});
+      }
+      // Time signature on first measure of piece only
+      if (startMeasure == 0 && ! s.getModifier("time")) {
+        if (typeof s.time_signature == "string")
+          s.addModifier({type: "time", time: s.time_signature});
+        else if (typeof s.time == "object")
+          s.addModifier(Vex.Merge({type: "time"}, s.time));
+      }
+    });
+  });
   
   // Store x, width of staves (y calculated automatically)
   if (! this.measureX) this.measureX = new Array();
   if (! this.measureWidth) this.measureWidth = new Array();
-
-  this.measureOptions[startMeasure] = {system_start: true, piece_start: (b == 0)};
 
   if (this.getMinMeasureWidth(startMeasure) + 20 >= this.width) {
     // Use only this measure and the minimum possible width

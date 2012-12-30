@@ -16,13 +16,13 @@ Vex.Flow.Test.Document.Start = function() {
 };
 
 Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
-  expect(13);
+  expect(14);
   // Custom backend programmatically generates measures
   var CustomBackend = function() {};
   CustomBackend.appearsValid = function(arg) { return true; };
   CustomBackend.prototype.parse = function(arg) { };
   CustomBackend.prototype.isValid = function() { return true; };
-  CustomBackend.prototype.getNumberOfMeasures = function() { return 1; };
+  CustomBackend.prototype.getNumberOfMeasures = function() { return 2; };
   CustomBackend.prototype.getMeasure = function(i) {
     var time = {num_beats: 4, beat_value: 4};
     var measure = new Vex.Flow.Measure({time: time});
@@ -37,7 +37,7 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
   // argument must evaluate to true
   var doc = new Vex.Flow.Document({}, {backend: CustomBackend});
   ok(doc instanceof Vex.Flow.Document, "created document");
-  ok(doc.getNumberOfMeasures() == 1, "correct number of measures");
+  ok(doc.getNumberOfMeasures() == 2, "correct number of measures");
   var measure = doc.getMeasure(0);
   ok(measure instanceof Vex.Flow.Measure, "created measure");
   ok(measure.getNumberOfParts() == 1, "measure has correct # parts");
@@ -53,11 +53,11 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
 
   var formatter = doc.getFormatter();
   ok(formatter instanceof Vex.Flow.Document.LiquidFormatter, "formatter ok");
-  formatter.setWidth(300);
+  formatter.setWidth(400);
   var block = formatter.getBlock(0);
-  ok(block[0] == 300, "block has correct width");
+  ok(block[0] == 400, "block has correct width");
 
-  var ctx = new contextBuilder(options.canvas_sel, 300, 120);
+  var ctx = new contextBuilder(options.canvas_sel, 400, 120);
   formatter.drawBlock(0, ctx);
   ok(true, "drew document");
 }
