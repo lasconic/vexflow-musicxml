@@ -24,9 +24,6 @@ Vex.Flow.Measure = function(object) {
       this.parts[i] = new Vex.Flow.Measure.Part(object.parts[i]);
   }
 
-  // Properties which begin with an underscore should NOT be serialized
-  this._vexflowStaves = null;
-
   this.type = "measure";
 }
 
@@ -301,10 +298,6 @@ Vex.Flow.Measure.Stave = function(object) {
       this.addModifier(object.modifiers[i]);
   }
 
-  this._x = this._y = this._width = 0;
-  this._height = undefined;
-  this._vexflowStave = null;
-
   this.type = "stave";
 }
 
@@ -363,37 +356,6 @@ Vex.Flow.Measure.Stave.prototype.deleteModifier = function(modifier) {
     if (this.modifiers[i].type != modifier)
       newModifiers.push(this.modifiers[i]);
   this.modifiers = newModifiers;
-}
-
-Vex.Flow.Measure.Stave.prototype.getX = function() { return this._x; }
-Vex.Flow.Measure.Stave.prototype.setX = function(x) { this._x = x; }
-Vex.Flow.Measure.Stave.prototype.getY = function() { return this._y; }
-Vex.Flow.Measure.Stave.prototype.setY = function(y) { this._y = y; }
-Vex.Flow.Measure.Stave.prototype.getWidth = function() { return this._width; }
-Vex.Flow.Measure.Stave.prototype.setWidth = function(width) { this._width = width; }
-Vex.Flow.Measure.Stave.prototype.getHeight = function() {
-  // Get height of dummy stave
-  if (! this._height) this._height = (new Vex.Flow.Stave(0, 0, 500)).getHeight();
-  return this._height;
-}
-
-/**
- * Creates a Vex.Flow.Stave, or returns the existing one if this method was
- * already called. x, y, width are required if the method was not already invoked.
- */
-Vex.Flow.Measure.Stave.prototype.getVexflowStave = function() {
-  if (! this._vexflowStave) {
-    var vfStave = new Vex.Flow.Stave(this._x, this._y, this._width);
-    this.modifiers.forEach(function(m) {
-      switch (m.type) {
-        case "clef":
-          vfStave.addClef(m.clef);
-          break;
-      }
-    });
-    this._vexflowStave = vfStave;
-  }
-  return this._vexflowStave;
 }
 
 /**
