@@ -14,12 +14,13 @@ Vex.Flow.Backend.IR = function() {
 }
 
 /**
- * "Parse" an existing IR document object (not necessarily a Document instance).
+ * "Parse" an existing IR document object (not necessarily a Document instance)
  * @param object The original document object
  */
 Vex.Flow.Backend.IR.prototype.parse = function(object) {
   if (! Vex.Flow.Backend.IR.appearsValid(object))
-    throw new Vex.RERR("InvalidArgument", "IR object must be a valid document");
+    throw new Vex.RERR("InvalidArgument",
+                       "IR object must be a valid document");
   
   // Force a first-class document object to get all measures
   if (typeof object.getNumberOfMeasures == "function"
@@ -123,7 +124,7 @@ Vex.Flow.Document.prototype.getNumberOfMeasures = function() {
 /**
  * Retrieve the ith measure (zero-indexed).
  * @param {Number} The zero-indexed measure to access.
- * @return {Vex.Flow.Measure} Measure object corresponding to the measure number
+ * @return {Vex.Flow.Measure} Measure object for corresponding measure
  */
 Vex.Flow.Document.prototype.getMeasure = function(i) {
   if (i in this.measures) return this.measures[i];
@@ -209,7 +210,8 @@ Vex.Flow.Document.Formatter.prototype.createVexflowStave = function(s, x,y,w) {
       case "time":
         var time_sig;
         if (typeof mod.time == "string") time_sig = mod.time;
-        else time_sig = mod.num_beats.toString() + "/" + mod.beat_value.toString();
+        else time_sig = mod.num_beats.toString() + "/"
+                      + mod.beat_value.toString();
         vfStave.addTimeSignature(time_sig);
         break;
     }
@@ -302,12 +304,6 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
 };
 
 // Internal drawing functions
-// DRAWING OPTIONS - stored in this.measureOptions
-// * system_start: start of system (line), always draw clef and key signature
-//                 connect all staves, multiple staves in a part may have a brace
-// * piece_start: start of piece, always draw clef, key, time signature
-//                Also implies system_start
-// * DEFAULT: connect staves within same part, only draw given modifiers
 (function(){
   function drawPart(part, vfStaves, context, options) {
     var staves = new Array(part.getNumberOfStaves());
@@ -342,7 +338,8 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
         for (var j = 0; j < voicesForStave[i].length; j++)
           vfVoices[j] = voicesForStave[i][j].getVexflowVoice(staves);
         var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
-        formatter.format(vfVoices, vfStaves[i].getNoteEndX()-vfStaves[i].getNoteStartX());
+        formatter.format(vfVoices, vfStaves[i].getNoteEndX()
+                                   - vfStaves[i].getNoteStartX());
         for (var j = 0; j < vfVoices.length; j++) {
           vfVoices[j].draw(context, vfStaves[i]);
           var vfObjects = voicesForStave[i][j].getVexflowObjects();
@@ -364,7 +361,7 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
         && (options.system_start || options.piece_start)
         && vfStaves.length > 1) {
       var connector = new Vex.Flow.StaveConnector(vfStaves[0],
-                                                  vfStaves[vfStaves.length - 1]);
+                                                  vfStaves[vfStaves.length-1]);
       connector.setType(Vex.Flow.StaveConnector.type.SINGLE);
       connector.setContext(context).draw();
     }
@@ -391,8 +388,10 @@ Vex.Flow.Document.LiquidFormatter = function(document) {
   if (arguments.length > 0) Vex.Flow.Document.Formatter.call(this, document);
   this.width = 500; // default value
 }
-Vex.Flow.Document.LiquidFormatter.prototype = new Vex.Flow.Document.Formatter();
-Vex.Flow.Document.LiquidFormatter.constructor=Vex.Flow.Document.LiquidFormatter;
+Vex.Flow.Document.LiquidFormatter.prototype
+  = new Vex.Flow.Document.Formatter();
+Vex.Flow.Document.LiquidFormatter.constructor
+  = Vex.Flow.Document.LiquidFormatter;
 
 Vex.Flow.Document.LiquidFormatter.prototype.setWidth = function(width) {
   this.width = width; return this; }
@@ -459,7 +458,7 @@ Vex.Flow.Document.LiquidFormatter.prototype.getBlock = function(b) {
       remainingWidth -= this.measureWidth[m];
     }
     // Split rest of width evenly
-    var extraWidth = Math.floor(remainingWidth / (endMeasure-startMeasure + 1));
+    var extraWidth = Math.floor(remainingWidth / (endMeasure-startMeasure+1));
     for (var m = startMeasure; m <= endMeasure; m++)
       this.measureWidth[m] += extraWidth;
     remainingWidth -= extraWidth * (endMeasure - startMeasure + 1);

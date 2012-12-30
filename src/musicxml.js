@@ -35,13 +35,16 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
   if (typeof data == "string") {
     // Parse XML string
     if (window.DOMParser && typeof XMLDocument != "undefined") {
-      this.document = (new window.DOMParser()).parseFromString(data, "text/xml"); }
-    else if (window.ActiveXObject && new window.ActiveXObject("Microsoft.XMLDOM")) {
+      var parser = new window.DOMParser();
+      this.document = parser.parseFromString(data, "text/xml");
+    }
+    else if (window.ActiveXObject
+             && new window.ActiveXObject("Microsoft.XMLDOM")) {
       this.document = new window.ActiveXObject("Microsoft.XMLDOM");
       this.document.async = "false";
       this.document.loadXML(data);
     }
-    else { throw new Vex.RERR("UnsupportedBrowserError", "No XML parser found"); }
+    else throw new Vex.RERR("UnsupportedBrowserError", "No XML parser found");
   }
   else if (data instanceof Document) this.document = data;
   else {
@@ -51,7 +54,8 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
   }
   this.documentElement = this.document.documentElement;
   if (this.documentElement.nodeName != 'score-partwise')
-    throw new Vex.RERR("ArgumentError", "VexFlow only supports partwise scores");
+    throw new Vex.RERR("ArgumentError",
+                       "VexFlow only supports partwise scores");
 
   // Go through each part, pushing the measures on the correct sub-array
   var partNum = 0;
@@ -90,8 +94,8 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
                 attrObject.time = {
                   num_beats: parseInt(attrs[a].getElementsByTagName("beats")[0]
                                               .textContent),
-                  beat_value: parseInt(attrs[a].getElementsByTagName("beat-type")[0]
-                                               .textContent)
+                  beat_value: parseInt(attrs[a].getElementsByTagName(
+                                                  "beat-type")[0].textContent)
                 };
                 break;
               case "clef":
@@ -106,7 +110,7 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
               this.attributes[measureNum] = [];
             if (! (partNum in this.attributes[measureNum]))
               this.attributes[measureNum][partNum] = {};
-            this.attributes[measureNum][partNum][attrs[a].nodeName] = attrObject;
+            this.attributes[measureNum][partNum][attrs[a].nodeName]=attrObject;
           }
         }
         measureNum++;
@@ -175,7 +179,7 @@ Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
       var noteObj = this.parseNoteElem(noteElems[i], attrs);
       var voice = 0;
       if (noteObj.voice) {
-        if (noteObj.voice >= numVoices) part.setNumberOfVoices(noteObj.voice + 1);
+        if (noteObj.voice >=numVoices) part.setNumberOfVoices(noteObj.voice+1);
         voice = noteObj.voice;
         delete noteObj.voice;
       }
@@ -222,7 +226,8 @@ Vex.Flow.Backend.MusicXML.prototype.parseNoteElem = function(noteElem, attrs) {
     switch (elems[j].nodeName) {
       case "pitch":
         step = elems[j].getElementsByTagName("step")[0].textContent;
-        octave = parseInt(elems[j].getElementsByTagName("octave")[0].textContent);
+        octave = parseInt(elems[j].getElementsByTagName("octave")[0]
+                                  .textContent);
         var alter = elems[j].getElementsByTagName("alter")[0];
         if (alter && ! accidental)
           switch (parseInt(alter.textContent)) {
@@ -236,8 +241,8 @@ Vex.Flow.Backend.MusicXML.prototype.parseNoteElem = function(noteElem, attrs) {
         var type = elems[j].textContent;
         // Look up type
         duration = {
-          whole: "1", half: "2", quarter: "4", eighth: "8",
-          "16th": "16", "32nd": "32", "64th": "64", "128th": "128", "256th": "256"
+          whole: "1", half: "2", quarter: "4", eighth: "8", "16th": "16",
+          "32nd": "32", "64th": "64", "128th": "128", "256th": "256"
         }[type];
         break;
       case "duration":

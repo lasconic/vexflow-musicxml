@@ -6,10 +6,10 @@
 /** @constructor */
 Vex.Flow.Measure = function(object) {
   if (typeof object != "object")
-    throw new Vex.RERR("ArgumentError", "Invalid argument to Vex.Flow.Measure");
+    throw new Vex.RERR("ArgumentError","Invalid argument to Vex.Flow.Measure");
   if (! object.time || ! object.time.num_beats || ! object.time.beat_value)
     throw new Vex.RERR("ArgumentError",
-              "Measure must be initialized with nonzero num_beats and beat_value");
+          "Measure must be initialized with nonzero num_beats and beat_value");
   this.time = Vex.Merge({}, object.time);
 
   this.attributes = {};
@@ -47,7 +47,8 @@ Vex.Flow.Measure.prototype.getPart = function(partNum) {
 }
 Vex.Flow.Measure.prototype.setPart = function(partNum, part) {
   if (this.parts.length <= partNum)
-    throw new Vex.RERR("ArgumentError", "Set number of parts before adding part");
+    throw new Vex.RERR("ArgumentError",
+                       "Set number of parts before adding part");
   this.parts[partNum] = new Vex.Flow.Measure.Part(part);
 }
 Vex.Flow.Measure.prototype.getParts = function() {
@@ -85,12 +86,12 @@ Vex.Flow.Measure.prototype.getStaves = function() {
  */
 Vex.Flow.Measure.prototype.addNote = function(note) {
   if (this.getNumberOfParts() != 1)
-    throw new Vex.RERR("ArgumentError", "Measure.addNote requires single part");
+    throw new Vex.RERR("ArgumentError","Measure.addNote requires single part");
   this.getPart(0).addNote(note);
 }
 
 /**
- * Vex.Flow.Measure.Part - a single part (which may include multiple staves/voices)
+ * Vex.Flow.Measure.Part - a single part (may include multiple staves/voices)
  * @constructor
  */
 Vex.Flow.Measure.Part = function(object) {
@@ -98,7 +99,7 @@ Vex.Flow.Measure.Part = function(object) {
     throw new Vex.RERR("ArgumentError", "Invalid argument to constructor");
   if (! object.time || ! object.time.num_beats || ! object.time.beat_value)
     throw new Vex.RERR("ArgumentError",
-                       "Constructor requires nonzero num_beats and beat_value");
+              "Constructor requires nonzero num_beats and beat_value");
   this.time = Vex.Merge({}, object.time);
   if (typeof object.getVoices == "function") this.voices = object.getVoices();
   else if (object.voices instanceof Array) {
@@ -153,7 +154,8 @@ Vex.Flow.Measure.Part.prototype.getVoice = function(voiceNum) {
 }
 Vex.Flow.Measure.Part.prototype.setVoice = function(voiceNum, voice) {
   if (this.voices.length <= voiceNum)
-    throw new Vex.RERR("ArgumentError", "Set number of voices before adding voice");
+    throw new Vex.RERR("ArgumentError",
+                       "Set number of voices before adding voice");
   this.voices[voiceNum] = new Vex.Flow.Measure.Voice(voice);
 }
 Vex.Flow.Measure.Part.prototype.getVoices = function() {
@@ -171,13 +173,14 @@ Vex.Flow.Measure.Part.prototype.getStave = function(staveNum) {
   if (! this.staves[staveNum]) {
     // Create empty stave
     this.staves[staveNum] = new Vex.Flow.Measure.Stave(
-                                  Vex.Merge({time: this.time}, this.staveOptions));
+                              Vex.Merge({time: this.time}, this.staveOptions));
   }
   return this.staves[staveNum];
 }
 Vex.Flow.Measure.Part.prototype.setStave = function(staveNum, stave) {
   if (this.staves.length <= staveNum)
-    throw new Vex.RERR("ArgumentError", "Set number of staves before adding stave");
+    throw new Vex.RERR("ArgumentError",
+                       "Set number of staves before adding stave");
   this.staves[staveNum] = new Vex.Flow.Measure.Stave(stave);
 }
 Vex.Flow.Measure.Part.prototype.getStaves = function() {
@@ -193,7 +196,7 @@ Vex.Flow.Measure.Part.prototype.getStaves = function() {
  */
 Vex.Flow.Measure.Part.prototype.addNote = function(note) {
   if (this.getNumberOfVoices() != 1)
-    throw new Vex.RERR("ArgumentError", "Measure.addNote requires single part");
+    throw new Vex.RERR("ArgumentError","Measure.addNote requires single part");
   this.getVoice(0).addNote(note);
 }
 
@@ -206,7 +209,7 @@ Vex.Flow.Measure.Voice = function(object) {
     throw new Vex.RERR("ArgumentError", "Invalid argument to constructor");
   if (! object.time || ! object.time.num_beats || ! object.time.beat_value)
     throw new Vex.RERR("ArgumentError",
-                       "Constructor requires nonzero num_beats and beat_value");
+              "Constructor requires nonzero num_beats and beat_value");
   this.time = Vex.Merge({}, object.time);
   // etc
   if (object.notes instanceof Array) {
@@ -288,7 +291,7 @@ Vex.Flow.Measure.Stave = function(object) {
     throw new Vex.RERR("ArgumentError", "Invalid argument to constructor");
   if (! object.time || ! object.time.num_beats || ! object.time.beat_value)
     throw new Vex.RERR("ArgumentError",
-                       "Constructor requires nonzero num_beats and beat_value");
+              "Constructor requires nonzero num_beats and beat_value");
   this.time = Vex.Merge({}, object.time);
   this.clef = (typeof object.clef == "string") ? object.clef : null;
   this.key = (typeof object.key == "string") ? object.key : null;
@@ -308,17 +311,20 @@ Vex.Flow.Measure.Stave = function(object) {
 Vex.Flow.Measure.Stave.prototype.addModifier = function(modifier) {
   // Type is required for modifiers
   if (typeof modifier != "object" || typeof modifier.type != "string")
-    throw new Vex.RERR("InvalidIRError", "Modifier requires type string property");
+    throw new Vex.RERR("InvalidIRError",
+                       "Stave modifier requires type string property");
   var newModifier = {type: modifier.type}; // copy modifier
   switch (modifier.type) {
     case "clef":
       if (typeof modifier.clef != "string")
-        throw new Vex.RERR("InvalidIRError", "Clef modifier requires clef string");
+        throw new Vex.RERR("InvalidIRError",
+                           "Clef modifier requires clef string");
       newModifier.clef = modifier.clef;
       break;
     case "key":
       if (typeof modifier.key != "string")
-        throw new Vex.RERR("InvalidIRError", "Key modifier requires key string");
+        throw new Vex.RERR("InvalidIRError",
+                           "Key modifier requires key string");
       newModifier.key = modifier.key;
       break;
     case "time":
@@ -349,7 +355,8 @@ Vex.Flow.Measure.Stave.prototype.getModifier = function(type) {
  */
 Vex.Flow.Measure.Stave.prototype.deleteModifier = function(modifier) {
   if (typeof modifier != "string")
-    throw new Vex.RERR("ArgumentError", "deleteModifier requires string argument");
+    throw new Vex.RERR("ArgumentError",
+                       "deleteModifier requires string argument");
   // Create new modifier array with non-matching modifiers
   var newModifiers = new Array();
   for (var i = 0; i < this.modifiers.length; i++)
