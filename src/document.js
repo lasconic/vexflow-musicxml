@@ -305,7 +305,10 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
 
 // Internal drawing functions
 (function(){
-  function drawPart(part, vfStaves, context, options) {
+  // drawConnector: 0 = none, 1 = single at start, 2 = single at end,
+  //                4 = single connecting all parts (applies to drawMeasure),
+  //                8 = brace (with bitwise OR)
+  function drawPart(part, vfStaves, context, drawConnector) {
     var staves = new Array(part.getNumberOfStaves());
     for (var i = 0; i < part.getNumberOfStaves(); i++)
       staves[i] = part.getStave(i);
@@ -332,6 +335,30 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
           voicesForStave[voice.stave] = [voice];
       });
     vfStaves.forEach(function(stave) { stave.setContext(context).draw(); });
+
+    // Draw connectors for multiple staves
+    if (vfStaves.length > 1) {
+      if (drawConnector & 1)
+        (new Vex.Flow.StaveConnector(vfStaves[0], vfStaves[vfStaves.length-1]))
+          .setType(Vex.Flow.StaveConnector.type.SINGLE)
+          .setContext(context).draw();
+      if (drawConnector & 2) {
+        // Create dummy staves which start after these staves
+        var stave1 = vfStaves[0], stave2 = vfStaves[vfStaves.length - 1];
+        var dummy1 = new Vex.Flow.Stave(stave1.x + stave1.width,
+                                        stave1.y, 100);
+        var dummy2 = new Vex.Flow.Stave(stave2.x + stave2.width,
+                                        stave2.y, 100);
+        (new Vex.Flow.StaveConnector(dummy1, dummy2))
+          .setType(Vex.Flow.StaveConnector.type.SINGLE)
+          .setContext(context).draw();
+      }
+      if ((drawConnector & 8) && part.showsBrace())
+        (new Vex.Flow.StaveConnector(vfStaves[0], vfStaves[vfStaves.length-1]))
+          .setType(Vex.Flow.StaveConnector.type.BRACE)
+          .setContext(context).draw();
+    }
+
     for (var i = 0; i < staves.length; i++)
       if (voicesForStave[i] instanceof Array) {
         var vfVoices = new Array();
@@ -349,17 +376,15 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
       }
   }
 
-  function drawMeasure(measure, vfStaves, context, options) {
+  function drawMeasure(measure, vfStaves, context, drawConnector) {
     var startStave = 0;
     measure.getParts().forEach(function(part) {
       var numStaves = part.getNumberOfStaves();
       var partStaves = vfStaves.slice(startStave, startStave + numStaves);
-      drawPart(part, partStaves, context, options);
+      drawPart(part, partStaves, context, drawConnector);
       startStave += numStaves;
     });
-    if (typeof options == "object"
-        && (options.system_start || options.piece_start)
-        && vfStaves.length > 1) {
+    if (vfStaves.length > 1 && (drawConnector & 4)) {
       var connector = new Vex.Flow.StaveConnector(vfStaves[0],
                                                   vfStaves[vfStaves.length-1]);
       connector.setType(Vex.Flow.StaveConnector.type.SINGLE);
@@ -370,10 +395,17 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
   Vex.Flow.Document.Formatter.prototype.drawBlock = function(b, context) {
     this.getBlock(b);
     var that = this;
-    this.measuresInBlock[b].forEach(function(m) {
+    var measures = this.measuresInBlock[b];
+    measures.forEach(function(m) {
       var stave = 0;
       while (that.getStave(m, stave)) stave++;
-      drawMeasure(that.document.getMeasure(m), that.vfStaves[m], context);
+      drawMeasure(that.document.getMeasure(m), that.vfStaves[m], context,
+                  // Always connect start of individial stave
+                  // Connect end if this is the last measure
+                  1 | (2*Number(b == measures[measures.length - 1]))
+                  // Connect all measures (4) and draw braces (8)
+                  // if this is the first measure
+                  | (12*Number(b == measures[0])));
     });
   }
 })();
@@ -440,17 +472,23 @@ Vex.Flow.Document.LiquidFormatter.prototype.getBlock = function(b) {
   if (! this.measureX) this.measureX = new Array();
   if (! this.measureWidth) this.measureWidth = new Array();
 
-  if (this.getMinMeasureWidth(startMeasure) + 20 >= this.width) {
+  // Calculate start x (20 if there are braces, 10 otherwise)
+  var start_x = 10;
+  this.document.getMeasure(startMeasure).getParts().forEach(function(part) {
+    if (part.showsBrace()) start_x = 20;
+  });
+
+  if (this.getMinMeasureWidth(startMeasure) + start_x + 10 >= this.width) {
     // Use only this measure and the minimum possible width
-    var block = [this.getMinMeasureWidth(startMeasure)+20, 0];
+    var block = [this.getMinMeasureWidth(startMeasure) + start_x + 10, 0];
     this.blockDimensions[b] = block;
     this.measuresInBlock[b] = [startMeasure];
-    this.measureX[startMeasure] = 10;
-    this.measureWidth[startMeasure] = block.width - 20;
+    this.measureX[startMeasure] = start_x;
+    this.measureWidth[startMeasure] = block.width - start_x - 10;
   }
   else {
     var curMeasure = startMeasure;
-    var width = 20;
+    var width = start_x + 10;
     while (width < this.width && curMeasure < numMeasures) {
       width += this.getMinMeasureWidth(curMeasure);
       curMeasure++;
@@ -460,7 +498,8 @@ Vex.Flow.Document.LiquidFormatter.prototype.getBlock = function(b) {
     for (var m = startMeasure; m <= endMeasure; m++) measureRange.push(m);
     this.measuresInBlock[b] = measureRange;
 
-    var remainingWidth = this.width - 20; // Allocate width to measures
+    // Allocate width to measures
+    var remainingWidth = this.width - start_x - 10;
     for (var m = startMeasure; m <= endMeasure; m++) {
       // Set each width to the minimum
       this.measureWidth[m] = Math.ceil(this.getMinMeasureWidth(m));
@@ -473,7 +512,7 @@ Vex.Flow.Document.LiquidFormatter.prototype.getBlock = function(b) {
     remainingWidth -= extraWidth * (endMeasure - startMeasure + 1);
     this.measureWidth[startMeasure] += remainingWidth; // Add remainder
     // Calculate x value for each measure
-    this.measureX[startMeasure] = 10;
+    this.measureX[startMeasure] = start_x;
     for (var m = startMeasure + 1; m <= endMeasure; m++)
       this.measureX[m] = this.measureX[m-1] + this.measureWidth[m-1];
     this.blockDimensions[b] = [this.width, 0];

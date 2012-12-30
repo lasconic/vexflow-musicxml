@@ -188,6 +188,11 @@ Vex.Flow.Measure.Part.prototype.getStaves = function() {
   return this.staves.slice(0);
 }
 
+/* True if there should be a brace at the start of every line for this part. */
+Vex.Flow.Measure.Part.prototype.showsBrace = function() {
+  return (this.staves.length > 1);
+}
+
 /**
  * Add a note to the end of the voice.
  * This is a convenience method that only works when the part only has
