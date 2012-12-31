@@ -73,8 +73,9 @@ Vex.Flow.Measure.prototype.getStave = function(staveNum) {
   return undefined;
 }
 Vex.Flow.Measure.prototype.getStaves = function() {
-  var staves = new Array(this.getNumberOfStaves());
-  for (var i = 0; i < staves.length; i++) staves.push(this.getStave(i));
+  var numStaves = this.getNumberOfStaves();
+  var staves = new Array();
+  for (var i = 0; i < numStaves; i++) staves.push(this.getStave(i));
   return staves;
 }
 
@@ -278,48 +279,6 @@ Vex.Flow.Measure.Voice.prototype.addNote = function(note) {
     });
   }
   this.notes.push(new Vex.Flow.Measure.Note(noteObj));
-}
-
-/**
- * Create a Vex.Flow.Voice with a StaveNote for each note.
- * Each note is added to the proper Vex.Flow.Measure.Stave in staves
- * (spanning multiple staves in a single voice not currently supported.)
- * @param {Array} Staves to add the notes to
- */
-Vex.Flow.Measure.Voice.prototype.getVexflowVoice = function(staves) {
-  if (! this._vexflowVoice) {
-    var voice = new Vex.Flow.Voice({num_beats: this.time.num_beats,
-                                    beat_value: this.time.beat_value,
-                                    resolution: Vex.Flow.RESOLUTION});
-    this._vexflowObjects = new Array();
-    var beamedNotes = undefined;
-    var clef = staves[this.stave].clef;
-    for (var i = 0; i < this.notes.length; i++) {
-      var note = this.notes[i];
-      var vfNote = this.notes[i].getVexflowNote({clef: clef});
-      voice.addTickable(vfNote);
-      if (note.beam == "begin") beamedNotes = [vfNote];
-      else if (beamedNotes) {
-        beamedNotes.push(vfNote);
-        if (note.beam == "end") {
-          this._vexflowObjects.push(new Vex.Flow.Beam(beamedNotes));
-          beamedNotes = undefined;
-        }
-      }
-    }
-    this._vexflowVoice = voice;
-  }
-  return this._vexflowVoice;
-}
-
-/**
- * Returns an array of objects such as beams which are created from the
- * VexFlow voice returned from getVexflowVoice. If the VexFlow voice has not
- * been created, the arguments are required and are passed to getVexflowVoice.
- */
-Vex.Flow.Measure.Voice.prototype.getVexflowObjects = function(staves) {
-  if (! this._vexflowVoice) this.getVexflowVoice(staves);
-  return this._vexflowObjects;
 }
 
 /**

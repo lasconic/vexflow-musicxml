@@ -216,7 +216,44 @@ Vex.Flow.Document.Formatter.prototype.createVexflowStave = function(s, x,y,w) {
         break;
     }
   });
+  if (typeof s.clef == "string") vfStave.clef = s.clef;
   return vfStave;
+}
+
+/**
+ * Create a Vex.Flow.Voice from a Vex.Flow.Measure.Voice.
+ * Each note is added to the proper Vex.Flow.Stave in staves
+ * (spanning multiple staves in a single voice not currently supported.)
+ * @param {Vex.Flow.Measure.Voice} Voice object
+ * @param {Array} Vex.Flow.Staves to add the notes to
+ * @return {Array} Vex.Flow.Voice and array of objects to be drawn
+ */
+Vex.Flow.Document.Formatter.prototype.getVexflowVoice =function(voice, staves){
+  var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
+                                  beat_value: voice.time.beat_value,
+                                  resolution: Vex.Flow.RESOLUTION});
+  // TODO: support spanning multiple staves
+  if (typeof voice.stave != "number")
+    throw new Vex.RERR("InvalidIRError", "Voice should have stave property");
+  vfVoice.setStave(staves[voice.stave]);
+
+  var vexflowObjects = new Array();
+  var beamedNotes = undefined;
+  var clef = staves[voice.stave].clef;
+  for (var i = 0; i < voice.notes.length; i++) {
+    var note = voice.notes[i];
+    var vfNote = voice.notes[i].getVexflowNote({clef: clef});
+    vfVoice.addTickable(vfNote);
+    if (note.beam == "begin") beamedNotes = [vfNote];
+    else if (beamedNotes) {
+      beamedNotes.push(vfNote);
+      if (note.beam == "end") {
+        vexflowObjects.push(new Vex.Flow.Beam(beamedNotes));
+        beamedNotes = undefined;
+      }
+    }
+  }
+  return [vfVoice, vexflowObjects];
 }
 
 /**
@@ -244,171 +281,121 @@ Vex.Flow.Document.Formatter.prototype.getStave = function(m, s) {
   return vfStave;
 }
 
-/**
- * Get the array of all Vex.Flow.Voices for the measure, populating
- * vfVoices, vfObjects, and staveForVoice if necessary.
- * @param {Number} Measure number
- * @return {Array} Array of Vex.Flow.Voices
- */
-Vex.Flow.Document.Formatter.prototype.getVoices = function(m) {
-  if (m in this.vfVoices) return this.vfVoices[m];
-  var allVfVoices = [], allVfObjects = [], allStavesForVoices = [];
-  var measure = this.document.getMeasure(m);
-  var numParts = measure.getNumberOfParts();
-  var partFirstStave = 0; // First stave in this part
-  for (var i = 0; i < numParts; i++) {
-    var part = measure.getPart(i);
-    var partStaves = [];
-    for (var s = 0; s < part.getNumberOfStaves(); s++)
-      partStaves[s] = part.getStave(s);
-    var numVoices = part.getNumberOfVoices();
-    for (var j = 0; j < numVoices; j++) {
-      var voice = part.getVoice(j);
-      if (typeof voice.stave != "number")
-        throw new Vex.RERR("InvalidIRError", "Voice must have stave property");
-      allVfVoices.push(voice.getVexflowVoice(partStaves));
-      allVfObjects.push(voice.getVexflowObjects(partStaves));
-      allStavesForVoices.push(voice.stave + partFirstStave);
-    }
-    partFirstStave += partStaves.length;
-  }
-  this.vfVoices[m] = allVfVoices;
-  this.vfObjects[m] = allVfObjects;
-  this.staveForVoice[m] = allStavesForVoices;
-  return allVfVoices;
-}
-
 Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
   if (! this.minMeasureWidths || ! (m in this.minMeasureWidths)) {
-    var formatter = new Vex.Flow.Formatter();
-    var minWidth = formatter.preCalculateMinTotalWidth(this.getVoices(m));
-
     // Calculate the maximum extra width on any stave (due to modifiers)
     var maxExtraWidth = 0;
     var measure = this.document.getMeasure(m);
-    var numParts = measure.getNumberOfParts();
-    for (var i = 0; i < numParts; i++) {
-      var part = measure.getPart(i);
+    var vfStaves = measure.getStaves().map(function(stave) {
+      var vfStave = this.createVexflowStave(stave, 0, 0, 500);
+      var extraWidth = 500 - (vfStave.getNoteEndX()-vfStave.getNoteStartX());
+      if (extraWidth > maxExtraWidth) maxExtraWidth = extraWidth;
+      return vfStave;
+    }, this);
+
+    var allVfVoices = [];
+    var maxPartWidth = 0;
+    var startStave = 0; // stave for part to start on
+    measure.getParts().forEach(function(part) {
       var numStaves = part.getNumberOfStaves();
-      for (var j = 0; j < numStaves; j++) {
-        var stave = part.getStave(j);
-        var vfStave = this.createVexflowStave(stave, 0, 0, 500);
-        var extraWidth = 500 - (vfStave.getNoteEndX()-vfStave.getNoteStartX());
-        if (extraWidth > maxExtraWidth) maxExtraWidth = extraWidth;
-      }
-    }
-    minWidth += maxExtraWidth;
-    this.minMeasureWidths[m] = minWidth;
+      var partStaves = vfStaves.slice(startStave, numStaves);
+      var vfVoices = part.getVoices().map(function(voice) {
+        return this.getVexflowVoice(voice, partStaves)[0]; }, this);
+      var formatter = new Vex.Flow.Formatter();
+      var minWidth = formatter.preCalculateMinTotalWidth(vfVoices);
+      if (minWidth > maxPartWidth) maxPartWidth = minWidth;
+      startStave += numStaves;
+    }, this);
+    this.minMeasureWidths[m] = maxExtraWidth + maxPartWidth;
   }
   return this.minMeasureWidths[m];
 };
 
 // Internal drawing functions
-(function(){
-  // drawConnector: 0 = none, 1 = single at start, 2 = single at end,
-  //                4 = single connecting all parts (applies to drawMeasure),
-  //                8 = brace (with bitwise OR)
-  function drawPart(part, vfStaves, context, drawConnector) {
-    var staves = new Array(part.getNumberOfStaves());
-    for (var i = 0; i < part.getNumberOfStaves(); i++)
-      staves[i] = part.getStave(i);
+// drawConnector: 0 = none, 1 = single at start, 2 = single at end,
+//                4 = single connecting all parts (applies to drawMeasure),
+//                8 = brace (with bitwise OR)
+Vex.Flow.Document.Formatter.prototype.drawPart =
+  function(part, vfStaves, context, drawConnector) {
+  var staves = part.getStaves();
+  var voices = part.getVoices();
 
-    var voices = new Array(part.getNumberOfVoices());
-    for (var i = 0; i < part.getNumberOfVoices(); i++)
-      voices[i] = part.getVoice(i);
-
-    // Array for each stave -> array of voices corresponding to that stave
-    // TODO: Set stave for each voice, then format all voices together
-    var voicesForStave = new Array(part.getNumberOfStaves());
-    if (staves.length == 1) {
-      for (var i = 0; i < voices.length; i++) voices[i].stave = 0;
-      voicesForStave[0] = voices;
+  vfStaves.forEach(function(stave) { stave.setContext(context).draw(); });
+  // Draw connectors for multiple staves
+  if (vfStaves.length > 1) {
+    if (drawConnector & 1)
+      (new Vex.Flow.StaveConnector(vfStaves[0], vfStaves[vfStaves.length-1]))
+        .setType(Vex.Flow.StaveConnector.type.SINGLE)
+        .setContext(context).draw();
+    if (drawConnector & 2) {
+      // Create dummy staves which start after these staves
+      var stave1 = vfStaves[0], stave2 = vfStaves[vfStaves.length - 1];
+      var dummy1 = new Vex.Flow.Stave(stave1.x + stave1.width,
+                                      stave1.y, 100);
+      var dummy2 = new Vex.Flow.Stave(stave2.x + stave2.width,
+                                      stave2.y, 100);
+      (new Vex.Flow.StaveConnector(dummy1, dummy2))
+        .setType(Vex.Flow.StaveConnector.type.SINGLE)
+        .setContext(context).draw();
     }
-    else
-      voices.forEach(function(voice) {
-        if (typeof voice.stave != "number")
-          throw new Vex.RERR("InvalidIRError",
-                             "Voice in multi-stave part needs stave property");
-        if (voice.stave in voicesForStave)
-          voicesForStave[voice.stave].push(voice);
-        else
-          voicesForStave[voice.stave] = [voice];
-      });
-    vfStaves.forEach(function(stave) { stave.setContext(context).draw(); });
-
-    // Draw connectors for multiple staves
-    if (vfStaves.length > 1) {
-      if (drawConnector & 1)
-        (new Vex.Flow.StaveConnector(vfStaves[0], vfStaves[vfStaves.length-1]))
-          .setType(Vex.Flow.StaveConnector.type.SINGLE)
-          .setContext(context).draw();
-      if (drawConnector & 2) {
-        // Create dummy staves which start after these staves
-        var stave1 = vfStaves[0], stave2 = vfStaves[vfStaves.length - 1];
-        var dummy1 = new Vex.Flow.Stave(stave1.x + stave1.width,
-                                        stave1.y, 100);
-        var dummy2 = new Vex.Flow.Stave(stave2.x + stave2.width,
-                                        stave2.y, 100);
-        (new Vex.Flow.StaveConnector(dummy1, dummy2))
-          .setType(Vex.Flow.StaveConnector.type.SINGLE)
-          .setContext(context).draw();
-      }
-      if ((drawConnector & 8) && part.showsBrace())
-        (new Vex.Flow.StaveConnector(vfStaves[0], vfStaves[vfStaves.length-1]))
-          .setType(Vex.Flow.StaveConnector.type.BRACE)
-          .setContext(context).draw();
-    }
-
-    for (var i = 0; i < staves.length; i++)
-      if (voicesForStave[i] instanceof Array) {
-        var vfVoices = new Array();
-        for (var j = 0; j < voicesForStave[i].length; j++)
-          vfVoices[j] = voicesForStave[i][j].getVexflowVoice(staves);
-        var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
-        formatter.format(vfVoices, vfStaves[i].getNoteEndX()
-                                   - vfStaves[i].getNoteStartX());
-        for (var j = 0; j < vfVoices.length; j++) {
-          vfVoices[j].draw(context, vfStaves[i]);
-          var vfObjects = voicesForStave[i][j].getVexflowObjects();
-          for (var obj = 0; obj < vfObjects.length; obj++)
-            vfObjects[obj].setContext(context).draw();
-        }
-      }
+    if ((drawConnector & 8) && part.showsBrace())
+      (new Vex.Flow.StaveConnector(vfStaves[0], vfStaves[vfStaves.length-1]))
+        .setType(Vex.Flow.StaveConnector.type.BRACE)
+        .setContext(context).draw();
   }
 
-  function drawMeasure(measure, vfStaves, context, drawConnector) {
-    var startStave = 0;
-    measure.getParts().forEach(function(part) {
-      var numStaves = part.getNumberOfStaves();
-      var partStaves = vfStaves.slice(startStave, startStave + numStaves);
-      drawPart(part, partStaves, context, drawConnector);
-      startStave += numStaves;
-    });
-    if (vfStaves.length > 1 && (drawConnector & 4)) {
-      var connector = new Vex.Flow.StaveConnector(vfStaves[0],
-                                                  vfStaves[vfStaves.length-1]);
-      connector.setType(Vex.Flow.StaveConnector.type.SINGLE);
-      connector.setContext(context).draw();
-    }
+  var allVfObjects = new Array();
+  var vfVoices = voices.map(function(voice) {
+    var result = this.getVexflowVoice(voice, vfStaves);
+    Array.prototype.push.apply(allVfObjects, result[1]);
+    var vfVoice = result[0];
+    vfVoice.tickables.forEach(function(tickable) {
+      tickable.setStave(vfVoice.stave); });
+    return vfVoice;
+  }, this);
+  var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
+  formatter.format(vfVoices, vfStaves[0].getNoteEndX()
+                             - vfStaves[0].getNoteStartX());
+  var i = 0;
+  vfVoices.forEach(function(vfVoice) {
+    vfVoice.draw(context, vfVoice.stave); });
+  allVfObjects.forEach(function(obj) {
+    obj.setContext(context).draw(); });
+}
+
+Vex.Flow.Document.Formatter.prototype.drawMeasure =
+  function(measure, vfStaves, context, drawConnector) {
+  var startStave = 0;
+  measure.getParts().forEach(function(part) {
+    var numStaves = part.getNumberOfStaves();
+    var partStaves = vfStaves.slice(startStave, startStave + numStaves);
+    this.drawPart(part, partStaves, context, drawConnector);
+    startStave += numStaves;
+  }, this);
+  if (vfStaves.length > 1 && (drawConnector & 4)) {
+    var connector = new Vex.Flow.StaveConnector(vfStaves[0],
+                                                vfStaves[vfStaves.length-1]);
+    connector.setType(Vex.Flow.StaveConnector.type.SINGLE);
+    connector.setContext(context).draw();
   }
-  
-  Vex.Flow.Document.Formatter.prototype.drawBlock = function(b, context) {
-    this.getBlock(b);
-    var that = this;
-    var measures = this.measuresInBlock[b];
-    measures.forEach(function(m) {
-      var stave = 0;
-      while (that.getStave(m, stave)) stave++;
-      drawMeasure(that.document.getMeasure(m), that.vfStaves[m], context,
-                  // Always connect start of individial stave
-                  // Connect end if this is the last measure
-                  1 | (2*Number(b == measures[measures.length - 1]))
-                  // Connect all measures (4) and draw braces (8)
-                  // if this is the first measure
-                  | (12*Number(b == measures[0])));
-    });
-  }
-})();
+}
+
+Vex.Flow.Document.Formatter.prototype.drawBlock = function(b, context) {
+  this.getBlock(b);
+  var that = this;
+  var measures = this.measuresInBlock[b];
+  measures.forEach(function(m) {
+    var stave = 0;
+    while (that.getStave(m, stave)) stave++;
+    this.drawMeasure(that.document.getMeasure(m), that.vfStaves[m], context,
+                     // Always connect start of individial stave
+                     // Connect end if this is the last measure
+                     1 | (2*Number(b == measures[measures.length - 1]))
+                     // Connect all measures (4) and draw braces (8)
+                     // if this is the first measure
+                     | (12*Number(b == measures[0])));
+  }, this);
+}
 
 /**
  * Vex.Flow.Document.Formatter.prototype.draw - defined in subclass
