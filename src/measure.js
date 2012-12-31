@@ -101,33 +101,35 @@ Vex.Flow.Measure.Part = function(object) {
     throw new Vex.RERR("ArgumentError",
               "Constructor requires nonzero num_beats and beat_value");
   this.time = Vex.Merge({}, object.time);
+
+  // Convenience options which can be set on a part instead of a stave/voice
+  this.options = {time: this.time};
+  if (typeof object.clef == "string") this.options.clef = object.clef;
+  if (typeof object.key == "string") this.options.key = object.key;
+  if (typeof object.time_signature == "string")
+    this.options.time_signature = object.time_signature;
+
   if (typeof object.getVoices == "function") this.voices = object.getVoices();
   else if (object.voices instanceof Array) {
-    this.voices = new Array(object.voices.length);
-    for (var i = 0; i < object.voices.length; i++)
-      this.voices[i] = new Vex.Flow.Measure.Voice(object.voices[i]);
+    var voiceOptions = this.options;
+    this.voices = object.voices.map(function(voice) {
+      // Copy voiceOptions and overwrite with options from argument
+      return new Vex.Flow.Measure.Voice(
+        Vex.Merge(Vex.Merge({}, voiceOptions), voice));
+    });
   }
   else this.voices = new Array(1); // Default to single voice
 
-  // Convenience options which can be set on a part instead of a stave
-  this.staveOptions = {time: this.time};
-  if (typeof object.clef == "string") this.staveOptions.clef = object.clef;
-  if (typeof object.key == "string") this.staveOptions.key = object.key;
-  if (typeof object.time_signature == "string")
-    this.staveOptions.time_signature = object.time_signature;
   if (typeof object.staves == "function") this.staves = object.getStaves();
   else if (object.staves instanceof Array) {
-    var staves = this.staves = new Array(object.staves.length);
-    var staveOptions = this.staveOptions;
-    var i = 0;
-    object.staves.forEach(function(stave) {
+    var staveOptions = this.options;
+    this.staves = object.staves.map(function(stave) {
       var staveObj;
       if (typeof stave == "string") // interpret stave as clef value
         staveObj = Vex.Merge({clef: stave}, staveOptions);
       // Copy staveOptions and overwrite with options from argument
       else staveObj = Vex.Merge(Vex.Merge({}, staveOptions), stave);
-      staves[i] = new Vex.Flow.Measure.Stave(staveObj);
-      i++;
+      return new Vex.Flow.Measure.Stave(staveObj);
     });
   }
   else {
@@ -146,10 +148,10 @@ Vex.Flow.Measure.Part.prototype.setNumberOfVoices = function(numVoices) {
   this.voices.length = numVoices;
 }
 Vex.Flow.Measure.Part.prototype.getVoice = function(voiceNum) {
-  if (! this.voices[voiceNum]) {
+  if (! this.voices[voiceNum])
     // Create empty voice
-    this.voices[voiceNum] = new Vex.Flow.Measure.Voice({time: this.time});
-  }
+    this.voices[voiceNum] = new Vex.Flow.Measure.Voice(
+                              Vex.Merge({time: this.time}, this.options));
   return this.voices[voiceNum];
 }
 Vex.Flow.Measure.Part.prototype.setVoice = function(voiceNum, voice) {
@@ -173,7 +175,7 @@ Vex.Flow.Measure.Part.prototype.getStave = function(staveNum) {
   if (! this.staves[staveNum]) {
     // Create empty stave
     this.staves[staveNum] = new Vex.Flow.Measure.Stave(
-                              Vex.Merge({time: this.time}, this.staveOptions));
+                              Vex.Merge({time: this.time}, this.options));
   }
   return this.staves[staveNum];
 }
@@ -216,12 +218,11 @@ Vex.Flow.Measure.Voice = function(object) {
     throw new Vex.RERR("ArgumentError",
               "Constructor requires nonzero num_beats and beat_value");
   this.time = Vex.Merge({}, object.time);
-  // etc
-  if (object.notes instanceof Array) {
-    this.notes = new Array(object.notes.length);
-    for (var i = 0; i < object.notes.length; i++)
-      this.notes[i] = new Vex.Flow.Measure.Note(object.notes[i]);
-  }
+  this.key = (typeof object.key == "string") ? object.key : null;
+  this.notes = new Array();
+  if (object.notes instanceof Array)
+    object.notes.forEach(function(note) {
+      this.addNote(new Vex.Flow.Measure.Note(note)); }, this);
   else this.notes = new Array();
 
   // Voice must currently be on a single stave
@@ -234,6 +235,17 @@ Vex.Flow.Measure.Voice = function(object) {
   this.type = "voice";
 }
 
+Vex.Flow.Measure.Voice.keyAccidentals = function(key) {
+  var acc = {C:null, D:null, E:null, F:null, G:null, A:null, B:null};
+  var acc_order = {"b": ["B","E","A","D","G","C","F"],
+                   "#": ["F","C","G","D","A","E","B"]};
+  var key_acc = Vex.Flow.keySignature.keySpecs[key];
+  var key_acctype = key_acc.acc, num_acc = key_acc.num;
+  for (var i = 0; i < num_acc; i++)
+    acc[acc_order[key_acctype][i]] = key_acctype;
+  return acc;
+}
+
 /**
  * Add a note to the end of the voice.
  * If there is no room for the note, a Vex.RuntimeError is thrown.
@@ -241,7 +253,31 @@ Vex.Flow.Measure.Voice = function(object) {
  */
 Vex.Flow.Measure.Voice.prototype.addNote = function(note) {
   // TODO: Check total ticks in voice
-  this.notes.push(new Vex.Flow.Measure.Note(note));
+  var noteObj = new Vex.Flow.Measure.Note(note); // copy note
+  if (this.key) {
+    // Track accidentals used previously in measure
+    if (! this._accidentals)
+      this._accidentals = Vex.Flow.Measure.Voice.keyAccidentals(this.key);
+    var accidentals = this._accidentals;
+    var i = 0;
+    noteObj.accidentals = noteObj.accidentals.map(function(acc) {
+      if (acc == "n") {
+        // Force natural
+        accidentals[key] = null;
+      }
+      else {
+        var key = note.keys[i][0].toUpperCase(); // letter name of key
+        if (accidentals[key] == acc) acc = null;
+        else {
+          accidentals[key] = acc;
+          if (acc == null) acc = "n";
+        }
+      }
+      i++;
+      return acc;
+    });
+  }
+  this.notes.push(new Vex.Flow.Measure.Note(noteObj));
 }
 
 /**
@@ -298,7 +334,10 @@ Vex.Flow.Measure.Stave = function(object) {
     throw new Vex.RERR("ArgumentError",
               "Constructor requires nonzero num_beats and beat_value");
   this.time = Vex.Merge({}, object.time);
-  this.clef = (typeof object.clef == "string") ? object.clef : null;
+  if (typeof object.clef != "string")
+    throw new Vex.RERR("InvalidIRError",
+              "Stave object requires clef property");
+  this.clef = object.clef;
   this.key = (typeof object.key == "string") ? object.key : null;
   this.modifiers = new Array();
   if (object.modifiers instanceof Array) {
@@ -379,10 +418,18 @@ Vex.Flow.Measure.Note = function(object) {
   if (typeof object != "object")
     throw new Vex.RERR("ArgumentError", "Invalid argument to constructor");
   if (object.keys instanceof Array)
-    // Copy keys array
-    // TODO: check each element
-    this.keys = object.keys.slice();
+    // Copy keys array, converting each key value to the standard
+    this.keys = object.keys.map(Vex.Flow.Measure.Note.Key);
   else this.keys = new Array();
+  if (object.accidentals instanceof Array) {
+    if (object.accidentals.length != this.keys.length)
+      throw new Vex.RERR("InvalidIRError",
+                         "accidentals and keys must have same length");
+    this.accidentals = object.accidentals.slice(0);
+  }
+  else if (this.keys.length)
+    this.accidentals =object.keys.map(Vex.Flow.Measure.Note.Key.GetAccidental);
+  else this.accidentals = new Array();
   this.duration = object.duration;
   this.stem_direction = object.stem_direction;
   this.beam = object.beam;
@@ -392,13 +439,31 @@ Vex.Flow.Measure.Note = function(object) {
   this.type = "note";
 }
 
+/* Standardize a key string, returning the result */
+Vex.Flow.Measure.Note.Key = function(key) {
+  // Remove natural, get properties
+  var keyProperties = Vex.Flow.keyProperties(key.replace(/n/i, ""), "treble");
+  return keyProperties.key + "/" + keyProperties.octave.toString();
+}
+/* Default accidental value from key */
+Vex.Flow.Measure.Note.Key.GetAccidental = function(key) {
+  // Keep natural, return accidental from properties
+  return Vex.Flow.keyProperties(key, "treble").accidental;
+}
+
 Vex.Flow.Measure.Note.prototype.getVexflowNote = function(options) {
   if (! this._vexflowNote) {
     var note_struct = Vex.Merge({}, options);
     note_struct.keys = this.keys;
     note_struct.duration = this.duration;
     if (this.stem_direction) note_struct.stem_direction = this.stem_direction;
-    this._vexflowNote = new Vex.Flow.StaveNote(note_struct);
+    var vfNote = new Vex.Flow.StaveNote(note_struct);
+    var i = 0;
+    this.accidentals.forEach(function(acc) {
+      if (acc != null) vfNote.addAccidental(i, new Vex.Flow.Accidental(acc));
+      i++;
+    });
+    this._vexflowNote = vfNote;
   }
   return this._vexflowNote;
 }

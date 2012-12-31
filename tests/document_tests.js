@@ -27,10 +27,20 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
     var time = {num_beats: 4, beat_value: 4};
     var measure = new Vex.Flow.Measure({time: time});
     measure.setPart(0, {time: time, clef: "treble", key: "D"});
-    measure.addNote({keys: ["d/4"], duration: "4"});
-    measure.addNote({keys: ["e/4"], duration: "4"});
-    measure.addNote({keys: ["f#/4"], duration: "4"});
-    measure.addNote({keys: ["g/4"], duration: "4"});
+    switch (i) {
+      case 0:
+        measure.addNote({keys: ["d/4"], duration: "4"});
+        measure.addNote({keys: ["e/4"], duration: "4"});
+        measure.addNote({keys: ["f#/4"], duration: "4"});
+        measure.addNote({keys: ["g/4"], duration: "4"});
+        break;
+      case 1:
+        measure.addNote({keys: ["f/4"], duration: "4"});
+        measure.addNote({keys: ["ebb/4"], duration: "4"});
+        measure.addNote({keys: ["f#/4"], duration: "4"});
+        measure.addNote({keys: ["g##/4"], duration: "4"});
+        break;
+    }
     ok(true, "added notes to measure");
     return measure;
   };
@@ -67,22 +77,19 @@ Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {
   var jsonDoc = {type: "document", measures: [
    {type: "measure", time: {num_beats: 4, beat_value: 4},
     parts: [
-     {type: "part", time: {num_beats: 4, beat_value: 4}, clef: "treble",
-      // TODO: remove staves when we don't need it
-      staves: [{type: "stave", time: {num_beats: 4, beat_value: 4}}],
+     {type: "part", time: {num_beats: 4, beat_value: 4},
+      clef: "treble", key: "C",
       voices: [
-       {type: "voice", time: {num_beats: 4, beat_value: 4},
-        notes: [
+       {notes: [
          {type: "note", keys: ["c/4"], duration: "1", stem_direction: -1}
         ]},
-       {type: "voice", time: {num_beats: 4, beat_value: 4},
-        notes: [
-         {type: "note", keys: ["g/4"], duration: "4"},
+       {notes: [
+         {type: "note", keys: ["g/4"], accidentals: ["n"], duration: "4"},
          {type: "note", keys: ["a/4"], duration: "4"},
-         {type: "note", keys: ["b/4"], duration: "8", beam: "begin",
+         {type: "note", keys: ["bb/4"], duration: "8", beam: "begin",
           stem_direction: -1},
          {type: "note", keys: ["c/5"], duration: "8", stem_direction: -1},
-         {type: "note", keys: ["d/5"], duration: "16", stem_direction: -1},
+         {type: "note", keys: ["b/4"], duration: "16", stem_direction: -1},
          {type: "note", keys: ["e/5"], duration: "16", stem_direction: -1},
          {type: "note", keys: ["f/5"], duration: "8", beam: "end",
           stem_direction: -1}
