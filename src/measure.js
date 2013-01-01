@@ -255,13 +255,14 @@ Vex.Flow.Measure.Voice.keyAccidentals = function(key) {
 Vex.Flow.Measure.Voice.prototype.addNote = function(note) {
   // TODO: Check total ticks in voice
   var noteObj = new Vex.Flow.Measure.Note(note); // copy note
-  if (this.key) {
+  if (this.key && note.accidentals == null) { // automatic accidentals
     // Track accidentals used previously in measure
     if (! this._accidentals)
       this._accidentals = Vex.Flow.Measure.Voice.keyAccidentals(this.key);
     var accidentals = this._accidentals;
     var i = 0;
-    noteObj.accidentals = noteObj.accidentals.map(function(acc) {
+    noteObj.accidentals = noteObj.keys.map(function(key) {
+      var acc = Vex.Flow.Measure.Note.Key.GetAccidental(key);
       if (acc == "n") {
         // Force natural
         accidentals[key] = null;
@@ -386,9 +387,9 @@ Vex.Flow.Measure.Note = function(object) {
                          "accidentals and keys must have same length");
     this.accidentals = object.accidentals.slice(0);
   }
-  else if (this.keys.length)
-    this.accidentals =object.keys.map(Vex.Flow.Measure.Note.Key.GetAccidental);
-  else this.accidentals = new Array();
+  else this.accidentals = null; // default accidentals
+  // Note: accidentals set by voice if this.accidentals == null
+  //       no accidentals           if this.accidentals == [null, ...]
   this.duration = object.duration;
   this.stem_direction = object.stem_direction;
   this.beam = object.beam;
@@ -418,10 +419,11 @@ Vex.Flow.Measure.Note.prototype.getVexflowNote = function(options) {
     if (this.stem_direction) note_struct.stem_direction = this.stem_direction;
     var vfNote = new Vex.Flow.StaveNote(note_struct);
     var i = 0;
-    this.accidentals.forEach(function(acc) {
-      if (acc != null) vfNote.addAccidental(i, new Vex.Flow.Accidental(acc));
-      i++;
-    });
+    if (this.accidentals instanceof Array)
+      this.accidentals.forEach(function(acc) {
+        if (acc != null) vfNote.addAccidental(i, new Vex.Flow.Accidental(acc));
+        i++;
+      });
     this._vexflowNote = vfNote;
   }
   return this._vexflowNote;
