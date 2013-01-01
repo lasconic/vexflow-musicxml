@@ -104,12 +104,12 @@ Vex.Flow.Document.prototype.init = function(data, options) {
  * Create a formatter with a copy of the document
  * (formatter may add clefs, etc. when formatting document)
  * @param {Function} Class of formatter
- * @return {Vex.Flow.Document.Formatter} Document formatter with document copy
+ * @return {Vex.Flow.DocumentFormatter} Document formatter with document copy
  */
 Vex.Flow.Document.prototype.getFormatter = function(formatterClass) {
   var Formatter = formatterClass;
   if (typeof FormatterClass != "function")
-    Formatter = Vex.Flow.Document.LiquidFormatter; // default class
+    Formatter = Vex.Flow.DocumentFormatter.Liquid; // default class
   return new Formatter(new Vex.Flow.Document(this));
 }
 

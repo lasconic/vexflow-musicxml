@@ -62,7 +62,7 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
   ok(voice instanceof Vex.Flow.Measure.Voice, "voice from part");
 
   var formatter = doc.getFormatter();
-  ok(formatter instanceof Vex.Flow.Document.LiquidFormatter, "formatter ok");
+  ok(formatter instanceof Vex.Flow.DocumentFormatter.Liquid, "formatter ok");
   formatter.setWidth(400);
   var block = formatter.getBlock(0);
   ok(block[0] == 400, "block has correct width");

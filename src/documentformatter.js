@@ -9,14 +9,14 @@
  * @param {Vex.Flow.Document} Document object to retrieve information from
  * @constructor
  */
-Vex.Flow.Document.Formatter = function(document) {
+Vex.Flow.DocumentFormatter = function(document) {
   if (arguments.length > 0) this.init(document);
 }
 
-Vex.Flow.Document.Formatter.prototype.init = function(document) {
+Vex.Flow.DocumentFormatter.prototype.init = function(document) {
   if (typeof document != "object")
     throw new Vex.RERR("ArgumentError",
-      "new Vex.Flow.Document.Formatter() requires Document object argument");
+      "new Vex.Flow.DocumentFormatter() requires Document object argument");
   this.document = document;
 
   // Groups of measures are contained in blocks (which could correspond to a
@@ -34,7 +34,7 @@ Vex.Flow.Document.Formatter.prototype.init = function(document) {
 }
 
 /**
- * Vex.Flow.Document.Formatter.prototype.getStaveX: to be defined by subclass
+ * Vex.Flow.DocumentFormatter.prototype.getStaveX: to be defined by subclass
  * Params: m (measure #), s (stave #)
  * Returns: x (number)
  */
@@ -44,7 +44,7 @@ Vex.Flow.Document.Formatter.prototype.init = function(document) {
  * @param {Number} Measure number
  * @param {Number} Stave number
  */
-Vex.Flow.Document.Formatter.prototype.getStaveY = function(m, s) {
+Vex.Flow.DocumentFormatter.prototype.getStaveY = function(m, s) {
   // Default behavour: calculate from stave above this one (or 0 for top stave)
   // (Have to make sure not to call getStave on this stave)
   if (s == 0) return 0;
@@ -54,7 +54,7 @@ Vex.Flow.Document.Formatter.prototype.getStaveY = function(m, s) {
 }
 
 /**
- * Vex.Flow.Document.Formatter.prototype.getStaveWidth: defined in subclass
+ * Vex.Flow.DocumentFormatter.prototype.getStaveWidth: defined in subclass
  * Params: m (measure #), s (stave #)
  * Returns: width (number) which should be less than the minimum width
  */
@@ -67,7 +67,7 @@ Vex.Flow.Document.Formatter.prototype.getStaveY = function(m, s) {
  * @param {Number} width of stave
  * @return {Vex.Flow.Stave} Generated stave object
  */
-Vex.Flow.Document.Formatter.prototype.createVexflowStave = function(s, x,y,w) {
+Vex.Flow.DocumentFormatter.prototype.createVexflowStave = function(s, x,y,w) {
   var vfStave = new Vex.Flow.Stave(x, y, w);
   s.modifiers.forEach(function(mod) {
     switch (mod.type) {
@@ -94,7 +94,7 @@ Vex.Flow.Document.Formatter.prototype.createVexflowStave = function(s, x,y,w) {
  * @param {Array} Vex.Flow.Staves to add the notes to
  * @return {Array} Vex.Flow.Voice and array of objects to be drawn
  */
-Vex.Flow.Document.Formatter.prototype.getVexflowVoice =function(voice, staves){
+Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
                                   beat_value: voice.time.beat_value,
                                   resolution: Vex.Flow.RESOLUTION});
@@ -129,7 +129,7 @@ Vex.Flow.Document.Formatter.prototype.getVexflowVoice =function(voice, staves){
  * @param {Number} Stave number
  * @return {Vex.Flow.Stave} Stave for the measure and stave #
  */
-Vex.Flow.Document.Formatter.prototype.getStave = function(m, s) {
+Vex.Flow.DocumentFormatter.prototype.getStave = function(m, s) {
   if (m in this.vfStaves && s in this.vfStaves[m])
     return this.vfStaves[m][s];
   if (typeof this.getStaveX != "function"
@@ -147,7 +147,7 @@ Vex.Flow.Document.Formatter.prototype.getStave = function(m, s) {
   return vfStave;
 }
 
-Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
+Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
   if (! this.minMeasureWidths || ! (m in this.minMeasureWidths)) {
     // Calculate the maximum extra width on any stave (due to modifiers)
     var maxExtraWidth = 0;
@@ -181,7 +181,7 @@ Vex.Flow.Document.Formatter.prototype.getMinMeasureWidth = function(m) {
 // drawConnector: 0 = none, 1 = single at start, 2 = single at end,
 //                4 = single connecting all parts (applies to drawMeasure),
 //                8 = brace (with bitwise OR)
-Vex.Flow.Document.Formatter.prototype.drawPart =
+Vex.Flow.DocumentFormatter.prototype.drawPart =
   function(part, vfStaves, context, drawConnector) {
   var staves = part.getStaves();
   var voices = part.getVoices();
@@ -229,7 +229,7 @@ Vex.Flow.Document.Formatter.prototype.drawPart =
     obj.setContext(context).draw(); });
 }
 
-Vex.Flow.Document.Formatter.prototype.drawMeasure =
+Vex.Flow.DocumentFormatter.prototype.drawMeasure =
   function(measure, vfStaves, context, drawConnector) {
   var startStave = 0;
   measure.getParts().forEach(function(part) {
@@ -246,7 +246,7 @@ Vex.Flow.Document.Formatter.prototype.drawMeasure =
   }
 }
 
-Vex.Flow.Document.Formatter.prototype.drawBlock = function(b, context) {
+Vex.Flow.DocumentFormatter.prototype.drawBlock = function(b, context) {
   this.getBlock(b);
   var that = this;
   var measures = this.measuresInBlock[b];
@@ -264,7 +264,7 @@ Vex.Flow.Document.Formatter.prototype.drawBlock = function(b, context) {
 }
 
 /**
- * Vex.Flow.Document.Formatter.prototype.draw - defined in subclass
+ * Vex.Flow.DocumentFormatter.prototype.draw - defined in subclass
  * Render document inside HTML element, creating canvases, etc.
  * Called a second time to update as necessary if the width of the element
  * changes, etc.
@@ -273,24 +273,23 @@ Vex.Flow.Document.Formatter.prototype.drawBlock = function(b, context) {
  */
 
 /**
- * Vex.Flow.Document.LiquidFormatter - default liquid formatter
+ * Vex.Flow.DocumentFormatter.Liquid - default liquid formatter
  * Fit measures onto lines with a given width, in blocks of 1 line of music
  *
  * @constructor
  */
-Vex.Flow.Document.LiquidFormatter = function(document) {
-  if (arguments.length > 0) Vex.Flow.Document.Formatter.call(this, document);
+Vex.Flow.DocumentFormatter.Liquid = function(document) {
+  if (arguments.length > 0) Vex.Flow.DocumentFormatter.call(this, document);
   this.width = 500; // default value
 }
-Vex.Flow.Document.LiquidFormatter.prototype
-  = new Vex.Flow.Document.Formatter();
-Vex.Flow.Document.LiquidFormatter.constructor
-  = Vex.Flow.Document.LiquidFormatter;
+Vex.Flow.DocumentFormatter.Liquid.prototype = new Vex.Flow.DocumentFormatter();
+Vex.Flow.DocumentFormatter.Liquid.constructor
+  = Vex.Flow.DocumentFormatter.Liquid;
 
-Vex.Flow.Document.LiquidFormatter.prototype.setWidth = function(width) {
+Vex.Flow.DocumentFormatter.Liquid.prototype.setWidth = function(width) {
   this.width = width; return this; }
 
-Vex.Flow.Document.LiquidFormatter.prototype.getBlock = function(b) {
+Vex.Flow.DocumentFormatter.Liquid.prototype.getBlock = function(b) {
   if (b in this.blockDimensions) return this.blockDimensions[b];
 
   var startMeasure = 0;
@@ -386,21 +385,21 @@ Vex.Flow.Document.LiquidFormatter.prototype.getBlock = function(b) {
   return this.blockDimensions[b];
 }
 
-Vex.Flow.Document.LiquidFormatter.prototype.getStaveX = function(m, s) {
+Vex.Flow.DocumentFormatter.Liquid.prototype.getStaveX = function(m, s) {
   if (! (m in this.measureX))
     throw new Vex.RERR("FormattingError",
                 "Creating stave for measure which does not belong to a block");
   return this.measureX[m];
 }
 
-Vex.Flow.Document.LiquidFormatter.prototype.getStaveWidth = function(m, s) {
+Vex.Flow.DocumentFormatter.Liquid.prototype.getStaveWidth = function(m, s) {
   if (! (m in this.measureWidth))
     throw new Vex.RERR("FormattingError",
                 "Creating stave for measure which does not belong to a block");
   return this.measureWidth[m];
 }
 
-Vex.Flow.Document.LiquidFormatter.prototype.draw = function(elem, options) {
+Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
   if (this._htmlElem != elem) {
     this._htmlElem = elem;
     elem.innerHTML = "";
