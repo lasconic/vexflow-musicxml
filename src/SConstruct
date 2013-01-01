@@ -60,7 +60,8 @@ vexflow_sources = [
     "boundingbox.js"
     "measure.js",
     "musicxml.js",
-    "document.js"
+    "document.js",
+    "documentformatter.js"
     ]
 
 Import('dbg opt')
