@@ -109,6 +109,8 @@ Vex.Flow.Measure.Part = function(object) {
   if (typeof object.key == "string") this.options.key = object.key;
   if (typeof object.time_signature == "string")
     this.options.time_signature = object.time_signature;
+  if (typeof object.options == "object")
+    Vex.Merge(this.options, object.options);
 
   if (typeof object.getVoices == "function") this.voices = object.getVoices();
   else if (object.voices instanceof Array) {

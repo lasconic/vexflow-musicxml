@@ -147,13 +147,26 @@ Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
       }
       part.getVoice(voice).addNote(new Vex.Flow.Measure.Note(noteObj));
     }
+    // Voices appear to not always be consecutive from 0
+    // Copy part and number voices correctly
+    // FIXME: Figure out why this happens
+    var newPart = new Vex.Flow.Measure.Part(part);
+    var v = 0; // Correct voice number
+    for (var i = 0; i < part.getNumberOfVoices(); i++)
+      if (typeof part.getVoice(i) == "object"
+          && part.getVoice(i).notes.length > 0) {
+        newPart.setVoice(v, part.getVoice(i));
+        v++;
+      }
+    newPart.setNumberOfVoices(v);
+    measure.setPart(p, newPart);
   }
   return measure;
 }
 
 Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
   function(measureNum, partNum, attributes) {
-  var attrObject = {};
+  var attrObject = null;
   var attrs = attributes.childNodes;
   for (var i = 0; i < attrs.length; i++) {
     var attr = attrs[i];
@@ -164,13 +177,13 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
           this.numStaves[partNum] = parseInt(attr.textContent);
         break;
       case "key":
-        attrObject.key = {
+        attrObject = {
           fifths: parseInt(attr.getElementsByTagName("fifths")[0]
                                    .textContent)
         };
         break;
       case "time":
-        attrObject.time = {
+        attrObject = {
           num_beats: parseInt(attr.getElementsByTagName("beats")[0]
                                       .textContent),
           beat_value: parseInt(attr.getElementsByTagName(
@@ -178,32 +191,35 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
         };
         break;
       case "clef":
-        attrObject.time = {
+        attrObject = {
           sign: attr.getElementsByTagName("sign")[0].textContent };
         break;
       case "divisions":
-        attrObject.divisions = parseInt(attr.textContent);
+        attrObject = parseInt(attr.textContent);
         break;
+      default: continue; // Don't use attribute if we don't know what it is
     }
     if (! (measureNum in this.attributes))
       this.attributes[measureNum] = [];
     if (! (partNum in this.attributes[measureNum]))
       this.attributes[measureNum][partNum] = {};
-    this.attributes[measureNum][partNum][attr.nodeName]=attrObject;
+    this.attributes[measureNum][partNum][attr.nodeName] = attrObject;
   }
   return attrObject;
 }
 
 Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
-  var step, octave, accidental, type, isRest, duration, ticks, voice;
-  var elems = noteElem.childNodes;
-  for (var j = 0; j < elems.length; j++)
-    switch (elems[j].nodeName) {
+  var step, octave, accidental;
+  var type, duration, ticks, voice;
+  var isRest = false, isChord = false;
+  var intrinsicTicks = 0, num_notes = null, beats_occupied = null;
+  Array.prototype.forEach.call(noteElem.childNodes, function(elem) {
+    switch (elem.nodeName) {
       case "pitch":
-        step = elems[j].getElementsByTagName("step")[0].textContent;
-        octave = parseInt(elems[j].getElementsByTagName("octave")[0]
+        step = elem.getElementsByTagName("step")[0].textContent;
+        octave = parseInt(elem.getElementsByTagName("octave")[0]
                                   .textContent);
-        var alter = elems[j].getElementsByTagName("alter")[0];
+        var alter = elem.getElementsByTagName("alter")[0];
         if (alter && ! accidental)
           switch (parseInt(alter.textContent)) {
             case 1: accidental = "#"; break;
@@ -213,7 +229,7 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
           }
         break;
       case "type":
-        var type = elems[j].textContent;
+        var type = elem.textContent;
         // Look up type
         duration = {
           whole: "1", half: "2", quarter: "4", eighth: "8", "16th": "16",
@@ -221,10 +237,29 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
         }[type];
         break;
       case "duration":
+        intrinsicTicks = new Vex.Flow.Fraction(Vex.Flow.RESOLUTION / 4
+                                               * parseInt(elem.textContent),
+                                               attrs.divisions).simplify();
+        if (isNaN(intrinsicTicks.numerator)
+            || isNaN(intrinsicTicks.denominator))
+          throw new Vex.RERR("InvalidMusicXML",
+                             "Error parsing MusicXML duration");
+        if (intrinsicTicks.denominator == 1)
+          intrinsicTicks = intrinsicTicks.numerator;
         // TODO: come up with duration string if we don't have a type
         break;
+      case "time-modification":
+        num_notes = elem.getElementsByTagName("actual-notes")[0];
+        beats_occupied = elem.getElementsByTagName("normal-notes")[0];
+        if (num_notes && beats_occupied) {
+          num_notes = parseInt(num_notes.textContent);
+          beats_occupied = parseInt(beats_occupied.textContent);
+        }
+        break;
       case "rest": isRest = true; break;
+      case "voice": voice = parseInt(elem.textContent); break;
     }
+  });
   var noteObj = {};
   if (isRest) {
     noteObj.keys = ["g/4"]; // TODO: correct display pitch
@@ -237,6 +272,16 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
     noteObj.keys = [pitch];
     noteObj.duration = duration;
   }
+  noteObj.intrinsicTicks = intrinsicTicks;
+  if (num_notes && beats_occupied) {
+    noteObj.tickMultiplier = new Vex.Flow.Fraction(beats_occupied, num_notes);
+    noteObj.tuplet = {num_notes: num_notes, beats_occupied: beats_occupied};
+  }
+  else {
+    noteObj.tickMultiplier = new Vex.Flow.Fraction(1, 1);
+    noteObj.tuplet = null;
+  }
+  noteObj.voice = voice;
   return noteObj;
 }
 
