@@ -25,6 +25,21 @@ Vex.Flow.Backend.MusicXML = function() {
 }
 
 /**
+ * Class method.
+ * Returns true if the argument appears to be valid MusicXML.
+ * Used when automatically detecting MusicXML.
+ *
+ * @return {Boolean} True if data looks like valid MusicXML.
+ */
+Vex.Flow.Backend.MusicXML.appearsValid = function(data) {
+  if (typeof data == "string") {
+    return data.search(/<score-partwise/i) != -1;
+  }
+  return (data instanceof Document) &&
+         (data.documentElement.nodeName == 'score-partwise');
+}
+
+/**
  * Parse an XML string, or "parse" an existing DOM Document object.
  * If the parse fails, a Vex.RuntimeError is thrown.
  * Upon success, no exception is thrown and #isValid returns true.
@@ -74,45 +89,7 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
         }
         this.measures[measureNum][partNum] = measure;
         var attributes = measure.getElementsByTagName("attributes")[0];
-        if (attributes) {
-          var attrObject = {};
-          var attrs = attributes.childNodes;
-          for (var a = 0; a < attrs.length; a++) {
-            switch (attrs[a].nodeName) {
-              case "staves":
-                // If this is the first measure, we use <staves>
-                if (measureNum == 0)
-                  this.numStaves[partNum] = parseInt(attrs[a].textContent);
-                break;
-              case "key":
-                attrObject.key = {
-                  fifths: parseInt(attrs[a].getElementsByTagName("fifths")[0]
-                                           .textContent)
-                };
-                break;
-              case "time":
-                attrObject.time = {
-                  num_beats: parseInt(attrs[a].getElementsByTagName("beats")[0]
-                                              .textContent),
-                  beat_value: parseInt(attrs[a].getElementsByTagName(
-                                                  "beat-type")[0].textContent)
-                };
-                break;
-              case "clef":
-                attrObject.time = {
-                  sign: attrs[a].getElementsByTagName("sign")[0].textContent };
-                break;
-              case "divisions":
-                attrObject.divisions = parseInt(attrs[a].textContent);
-                break;
-            }
-            if (! (measureNum in this.attributes))
-              this.attributes[measureNum] = [];
-            if (! (partNum in this.attributes[measureNum]))
-              this.attributes[measureNum][partNum] = {};
-            this.attributes[measureNum][partNum][attrs[a].nodeName]=attrObject;
-          }
-        }
+        if (attributes) this.parseAttributes(measureNum, partNum, attributes);
         measureNum++;
       }
       // numStaves defaults to 1 for this part
@@ -123,21 +100,6 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
   }
 
   this.valid = true;
-}
-
-/**
- * Class method.
- * Returns true if the argument appears to be valid MusicXML.
- * Used when automatically detecting MusicXML.
- *
- * @return {Boolean} True if data looks like valid MusicXML.
- */
-Vex.Flow.Backend.MusicXML.appearsValid = function(data) {
-  if (typeof data == "string") {
-    return data.search(/<score-partwise/i) != -1;
-  }
-  return (data instanceof Document) &&
-         (data.documentElement.nodeName == 'score-partwise');
 }
 
 /**
@@ -176,7 +138,7 @@ Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
     var voiceObjects = new Array(); // array of arrays
     for (var i = 0; i < noteElems.length; i++) {
       // FIXME: Chord support
-      var noteObj = this.parseNoteElem(noteElems[i], attrs);
+      var noteObj = this.parseNote(noteElems[i], attrs);
       var voice = 0;
       if (noteObj.voice) {
         if (noteObj.voice >=numVoices) part.setNumberOfVoices(noteObj.voice+1);
@@ -189,37 +151,50 @@ Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
   return measure;
 }
 
-/**
- * Returns complete attributes object for measure m, part p (zero-indexed)
- */
-Vex.Flow.Backend.MusicXML.prototype.getAttributes = function(m, p) {
-  var attrs = {};
-  // Merge with every previous attributes object in order
-  for (var i = 0; i <= m; i++) {
-    if (! (i in this.attributes)) continue;
-    if (! (p in this.attributes[i])) continue;
-    Vex.Merge(attrs, this.attributes[i][p]);
+Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
+  function(measureNum, partNum, attributes) {
+  var attrObject = {};
+  var attrs = attributes.childNodes;
+  for (var i = 0; i < attrs.length; i++) {
+    var attr = attrs[i];
+    switch (attr.nodeName) {
+      case "staves":
+        // If this is the first measure, we use <staves>
+        if (measureNum == 0)
+          this.numStaves[partNum] = parseInt(attr.textContent);
+        break;
+      case "key":
+        attrObject.key = {
+          fifths: parseInt(attr.getElementsByTagName("fifths")[0]
+                                   .textContent)
+        };
+        break;
+      case "time":
+        attrObject.time = {
+          num_beats: parseInt(attr.getElementsByTagName("beats")[0]
+                                      .textContent),
+          beat_value: parseInt(attr.getElementsByTagName(
+                                          "beat-type")[0].textContent)
+        };
+        break;
+      case "clef":
+        attrObject.time = {
+          sign: attr.getElementsByTagName("sign")[0].textContent };
+        break;
+      case "divisions":
+        attrObject.divisions = parseInt(attr.textContent);
+        break;
+    }
+    if (! (measureNum in this.attributes))
+      this.attributes[measureNum] = [];
+    if (! (partNum in this.attributes[measureNum]))
+      this.attributes[measureNum][partNum] = {};
+    this.attributes[measureNum][partNum][attr.nodeName]=attrObject;
   }
-  return attrs;
+  return attrObject;
 }
 
-/**
- * Converts keys as fifths (e.g. -2 for Bb) to the equivalent major key ("Bb").
- * @param {Number} number of fifths from -7 to 7
- * @return {String} string representation of key
- */
-Vex.Flow.Backend.MusicXML.prototype.fifthsToKey = function(fifths) {
-  // Find equivalent key in Vex.Flow.keySignature.keySpecs
-  for (var i in Vex.Flow.keySignature.keySpecs) {
-    var spec = Vex.Flow.keySignature.keySpecs[i];
-    if (typeof spec != "object" || ! ("acc" in spec) || ! ("num" in spec))
-      continue;
-    if (   (fifths < 0 && spec.acc == "b" && spec.num == Math.abs(fifths))
-        || (fifths >= 0 && spec.acc != "b" && spec.num == fifths)) return i;
-  }
-}
-
-Vex.Flow.Backend.MusicXML.prototype.parseNoteElem = function(noteElem, attrs) {
+Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
   var step, octave, accidental, type, isRest, duration, ticks, voice;
   var elems = noteElem.childNodes;
   for (var j = 0; j < elems.length; j++)
@@ -263,4 +238,34 @@ Vex.Flow.Backend.MusicXML.prototype.parseNoteElem = function(noteElem, attrs) {
     noteObj.duration = duration;
   }
   return noteObj;
+}
+
+/**
+ * Returns complete attributes object for measure m, part p (zero-indexed)
+ */
+Vex.Flow.Backend.MusicXML.prototype.getAttributes = function(m, p) {
+  var attrs = {};
+  // Merge with every previous attributes object in order
+  for (var i = 0; i <= m; i++) {
+    if (! (i in this.attributes)) continue;
+    if (! (p in this.attributes[i])) continue;
+    Vex.Merge(attrs, this.attributes[i][p]);
+  }
+  return attrs;
+}
+
+/**
+ * Converts keys as fifths (e.g. -2 for Bb) to the equivalent major key ("Bb").
+ * @param {Number} number of fifths from -7 to 7
+ * @return {String} string representation of key
+ */
+Vex.Flow.Backend.MusicXML.prototype.fifthsToKey = function(fifths) {
+  // Find equivalent key in Vex.Flow.keySignature.keySpecs
+  for (var i in Vex.Flow.keySignature.keySpecs) {
+    var spec = Vex.Flow.keySignature.keySpecs[i];
+    if (typeof spec != "object" || ! ("acc" in spec) || ! ("num" in spec))
+      continue;
+    if (   (fifths < 0 && spec.acc == "b" && spec.num == Math.abs(fifths))
+        || (fifths >= 0 && spec.acc != "b" && spec.num == fifths)) return i;
+  }
 }
