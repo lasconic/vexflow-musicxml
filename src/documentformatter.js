@@ -98,6 +98,7 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
                                   beat_value: voice.time.beat_value,
                                   resolution: Vex.Flow.RESOLUTION});
+  vfVoice.setMode(Vex.Flow.Voice.Mode.SOFT);
   // TODO: support spanning multiple staves
   if (typeof voice.stave != "number")
     throw new Vex.RERR("InvalidIRError", "Voice should have stave property");
@@ -256,10 +257,10 @@ Vex.Flow.DocumentFormatter.prototype.drawBlock = function(b, context) {
     this.drawMeasure(that.document.getMeasure(m), that.vfStaves[m], context,
                      // Always connect start of individial stave
                      // Connect end if this is the last measure
-                     1 | (2*Number(b == measures[measures.length - 1]))
+                     1 | (2*Number(m == measures[measures.length - 1]))
                      // Connect all measures (4) and draw braces (8)
                      // if this is the first measure
-                     | (12*Number(b == measures[0])));
+                     | (12*Number(m == measures[0])));
   }, this);
 }
 
@@ -324,10 +325,10 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.getBlock = function(b) {
   if (! this.measureX) this.measureX = new Array();
   if (! this.measureWidth) this.measureWidth = new Array();
 
-  // Calculate start x (20 if there are braces, 10 otherwise)
+  // Calculate start x (15 if there are braces, 10 otherwise)
   var start_x = 10;
   this.document.getMeasure(startMeasure).getParts().forEach(function(part) {
-    if (part.showsBrace()) start_x = 20;
+    if (part.showsBrace()) start_x = 15;
   });
 
   if (this.getMinMeasureWidth(startMeasure) + start_x + 10 >= this.width) {
