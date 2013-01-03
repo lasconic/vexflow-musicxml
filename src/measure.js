@@ -123,7 +123,7 @@ Vex.Flow.Measure.Part = function(object) {
   }
   else this.voices = new Array(1); // Default to single voice
 
-  if (typeof object.staves == "function") this.staves = object.getStaves();
+  if (typeof object.getStaves == "function") this.staves = object.getStaves();
   else if (object.staves instanceof Array) {
     var staveOptions = this.options;
     this.staves = object.staves.map(function(stave) {
@@ -186,7 +186,8 @@ Vex.Flow.Measure.Part.prototype.setStave = function(staveNum, stave) {
   if (this.staves.length <= staveNum)
     throw new Vex.RERR("ArgumentError",
                        "Set number of staves before adding stave");
-  this.staves[staveNum] = new Vex.Flow.Measure.Stave(stave);
+  this.staves[staveNum] = new Vex.Flow.Measure.Stave(
+                            Vex.Merge(Vex.Merge({}, this.options), stave));
 }
 Vex.Flow.Measure.Part.prototype.getStaves = function() {
   for (var i = 0; i < this.getNumberOfStaves(); i++) this.getStave(i);
