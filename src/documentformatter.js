@@ -123,27 +123,33 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
                                   beat_value: voice.time.beat_value,
                                   resolution: Vex.Flow.RESOLUTION});
-  vfVoice.setMode(Vex.Flow.Voice.Mode.SOFT);
   // TODO: support spanning multiple staves
   if (typeof voice.stave != "number")
     throw new Vex.RERR("InvalidIRError", "Voice should have stave property");
   vfVoice.setStave(staves[voice.stave]);
 
   var vexflowObjects = new Array();
-  var beamedNotes = undefined;
+  var beamedNotes = null; // array of all vfNotes in beam
+  var tiedNote = null; // only last vFNote in tie
   var clef = staves[voice.stave].clef;
   for (var i = 0; i < voice.notes.length; i++) {
     var note = voice.notes[i];
     var vfNote = this.getVexflowNote(voice.notes[i], {clef: clef});
     vfVoice.addTickable(vfNote);
     if (note.beam == "begin") beamedNotes = [vfNote];
-    else if (beamedNotes) {
+    else if (note.beam && beamedNotes) {
       beamedNotes.push(vfNote);
       if (note.beam == "end") {
         vexflowObjects.push(new Vex.Flow.Beam(beamedNotes));
-        beamedNotes = undefined;
+        beamedNotes = null;
       }
     }
+    if (note.tie == "end" || note.tie == "continue")
+      // TODO: Tie only the correct indices
+      vexflowObjects.push(new Vex.Flow.StaveTie({
+        first_note: tiedNote, last_note: vfNote
+      }));
+    if (note.tie == "begin" || note.tie == "continue") tiedNote = vfNote;
   }
   return [vfVoice, vexflowObjects];
 }

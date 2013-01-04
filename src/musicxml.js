@@ -235,45 +235,50 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
 }
 
 Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
-  var step, octave, accidental;
-  var type, duration, ticks;
-  var voice, stave;
-  var isRest = false, isChord = false;
-  var intrinsicTicks = 0, num_notes = null, beats_occupied = null;
+  var num_notes = null, beats_occupied = null;
+  var noteObj = {rest: false, chord: false};
   Array.prototype.forEach.call(noteElem.childNodes, function(elem) {
     switch (elem.nodeName) {
       case "pitch":
-        step = elem.getElementsByTagName("step")[0].textContent;
-        octave = parseInt(elem.getElementsByTagName("octave")[0]
+        var step = elem.getElementsByTagName("step")[0].textContent;
+        var octave = parseInt(elem.getElementsByTagName("octave")[0]
                                   .textContent);
         var alter = elem.getElementsByTagName("alter")[0];
-        if (alter && ! accidental)
+        if (alter)
           switch (parseInt(alter.textContent)) {
-            case 1: accidental = "#"; break;
-            case 2: accidental = "##"; break;
-            case -1: accidental = "b"; break;
-            case -2: accidental = "bb"; break;
+            case 1: step += "#"; break;
+            case 2: step += "##"; break;
+            case -1: step += "b"; break;
+            case -2: step += "bb"; break;
           }
+        noteObj.keys = [step + "/" + octave.toString()];
         break;
       case "type":
         var type = elem.textContent;
         // Look up type
-        duration = {
+        noteObj.duration = {
           whole: "1", half: "2", quarter: "4", eighth: "8", "16th": "16",
           "32nd": "32", "64th": "64", "128th": "128", "256th": "256"
         }[type];
+        if (noteObj.rest) noteObj.duration += "r";
         break;
-      case "dot": duration += "d"; break; // Always follows type
+      case "dot": // Always follow type; noteObj.duration exists
+        var duration = noteObj.duration, rest = duration.indexOf("r");
+        if (noteObj.rest) duration = duration.substring(0, rest) + "dr";
+        else duration += "d";
+        noteObj.duration = duration;
+        break;
       case "duration":
-        intrinsicTicks = new Vex.Flow.Fraction(Vex.Flow.RESOLUTION / 4
-                                               * parseInt(elem.textContent),
-                                               attrs.divisions).simplify();
+        var intrinsicTicks = new Vex.Flow.Fraction(Vex.Flow.RESOLUTION / 4
+                                                  * parseInt(elem.textContent),
+                                                  attrs.divisions).simplify();
         if (isNaN(intrinsicTicks.numerator)
             || isNaN(intrinsicTicks.denominator))
           throw new Vex.RERR("InvalidMusicXML",
                              "Error parsing MusicXML duration");
         if (intrinsicTicks.denominator == 1)
           intrinsicTicks = intrinsicTicks.numerator;
+        noteObj.intrinsicTicks = intrinsicTicks;
         // TODO: come up with duration string if we don't have a type
         break;
       case "time-modification":
@@ -284,25 +289,50 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
           beats_occupied = parseInt(beats_occupied.textContent);
         }
         break;
-      case "rest": isRest = true; break;
-      case "chord": isChord = true; break;
-      case "voice": voice = parseInt(elem.textContent); break;
-      case "staff": stave = parseInt(elem.textContent); break;
+      case "rest":
+        noteObj.rest = true;
+        var step = elem.getElementsByTagName("display-step")[0];
+        var octave = elem.getElementsByTagName("display-octave")[0];
+        if (step && octave)
+          noteObj.keys = [step.textContent + "/" + octave.textContent];
+        break;
+      case "chord": noteObj.chord = true; break;
+      case "voice":
+        var voice = parseInt(elem.textContent);
+        if (! isNaN(voice)) noteObj.voice = voice;
+        break;
+      case "staff":
+        var stave = parseInt(elem.textContent);
+        if (! isNaN(stave) && stave > 0) noteObj.stave = stave - 1;
+        break;
+      case "stem":
+        if (elem.textContent == "up") noteObj.stem_direction = 1;
+        else if (elem.textContent == "down") noteObj.stem_direction = -1;
+        break;
+      case "beam":
+        var beam = elem.textContent;
+        Vex.Assert(beam == "begin" || beam == "continue" || beam == "end",
+                   "Bad beam in MusicXML: " + beam.toString());
+        noteObj.beam = beam;
+        break;
+      case "notations":
+        Array.prototype.forEach.call(elem.childNodes, function(notationElem) {
+          switch (notationElem.nodeName) {
+            case "tied": // start-continue-stop vs begin-continue-end
+              var tie = notationElem.getAttribute("type");
+              switch (tie) {
+                case "start": noteObj.tie = "begin"; break;
+                case "continue": noteObj.tie = "continue"; break;
+                case "stop": noteObj.tie = "end"; break;
+                default: Vex.RERR("BadMusicXML", "Bad tie: " + tie.toString());
+              }
+              break;
+            // TODO: tuplet
+          }
+        });
+        break;
     }
   });
-  var noteObj = {};
-  if (isRest) {
-    noteObj.keys = ["g/4"]; // TODO: correct display pitch
-    noteObj.duration = duration + "r";
-  }
-  else {
-    var pitch = step;
-    if (accidental) pitch += accidental;
-    pitch += "/" + octave.toString();
-    noteObj.keys = [pitch];
-    noteObj.duration = duration;
-  }
-  noteObj.intrinsicTicks = intrinsicTicks;
   if (num_notes && beats_occupied) {
     noteObj.tickMultiplier = new Vex.Flow.Fraction(beats_occupied, num_notes);
     noteObj.tuplet = {num_notes: num_notes, beats_occupied: beats_occupied};
@@ -311,9 +341,15 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
     noteObj.tickMultiplier = new Vex.Flow.Fraction(1, 1);
     noteObj.tuplet = null;
   }
-  noteObj.chord = isChord;
-  if (! isNaN(voice)) noteObj.voice = voice;
-  if (! isNaN(stave) && stave > 0) noteObj.stave = stave - 1;
+  // Set default rest position now that we know the stave
+  if (noteObj.rest && ! noteObj.keys) {
+    var clef = attrs.clef;
+    if (clef instanceof Array) clef = clef[noteObj.stave];
+    switch (clef) {
+      case "bass": noteObj.keys = ["D/3"]; break;
+      case "treble": default: noteObj.keys = ["B/4"]; break;
+    }
+  }
   return noteObj;
 }
 

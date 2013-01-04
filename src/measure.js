@@ -394,8 +394,12 @@ Vex.Flow.Measure.Note = function(object) {
   // Note: accidentals set by voice if this.accidentals == null
   //       no accidentals           if this.accidentals == [null, ...]
   this.duration = object.duration;
-  this.stem_direction = object.stem_direction;
-  this.beam = object.beam;
+  this.stem_direction = (typeof object.stem_direction == "number")
+                      ? object.stem_direction : null;
+  this.beam = (typeof object.beam == "string")
+            ? object.beam : null;
+  this.tie = (typeof object.tie == "string")
+           ? object.tie : null;
 
   this._vexflowNote = null;
 
