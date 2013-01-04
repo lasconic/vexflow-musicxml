@@ -190,19 +190,25 @@ Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
     }, this);
 
     var allVfVoices = [];
-    var maxPartWidth = 0;
     var startStave = 0; // stave for part to start on
     measure.getParts().forEach(function(part) {
       var numStaves = part.getNumberOfStaves();
       var partStaves = vfStaves.slice(startStave, numStaves);
-      var vfVoices = part.getVoices().map(function(voice) {
-        return this.getVexflowVoice(voice, partStaves)[0]; }, this);
-      var formatter = new Vex.Flow.Formatter();
-      var minWidth = formatter.preCalculateMinTotalWidth(vfVoices);
-      if (minWidth > maxPartWidth) maxPartWidth = minWidth;
+      part.getVoices().forEach(function(voice) {
+        allVfVoices.push(this.getVexflowVoice(voice, partStaves)[0]); }, this);
       startStave += numStaves;
     }, this);
-    this.minMeasureWidths[m] = maxExtraWidth + maxPartWidth;
+    var formatter = new Vex.Flow.Formatter();
+    var noteWidth = formatter.preCalculateMinTotalWidth(allVfVoices);
+
+    // Find max tickables in any voice, add a minimum space between them
+    // to get a sane min width
+    var maxTickables = 0;
+    allVfVoices.forEach(function(v) {
+      var numTickables = v.tickables.length;
+      if (numTickables > maxTickables) maxTickables = numTickables;
+    });
+    this.minMeasureWidths[m] = maxExtraWidth + noteWidth + maxTickables*5 + 10;
   }
   return this.minMeasureWidths[m];
 };
@@ -251,7 +257,7 @@ Vex.Flow.DocumentFormatter.prototype.drawPart =
   }, this);
   var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
   formatter.format(vfVoices, vfStaves[0].getNoteEndX()
-                             - vfStaves[0].getNoteStartX());
+                             - vfStaves[0].getNoteStartX() - 10);
   var i = 0;
   vfVoices.forEach(function(vfVoice) {
     vfVoice.draw(context, vfVoice.stave); });
