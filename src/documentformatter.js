@@ -337,22 +337,20 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.getBlock = function(b) {
   if (startMeasure >= numMeasures) return null;
 
   // Update modifiers for first measure
-  this.document.getMeasure(startMeasure).getParts().forEach(function(part) {
-    part.getStaves().forEach(function(s) {
-      if (typeof s.clef == "string" && ! s.getModifier("clef")) {
-        s.addModifier({type: "clef", clef: s.clef});
-      }
-      if (typeof s.key == "string" && ! s.getModifier("key")) {
-        s.addModifier({type: "key", key: s.key});
-      }
-      // Time signature on first measure of piece only
-      if (startMeasure == 0 && ! s.getModifier("time")) {
-        if (typeof s.time_signature == "string")
-          s.addModifier({type: "time", time: s.time_signature});
-        else if (typeof s.time == "object")
-          s.addModifier(Vex.Merge({type: "time"}, s.time));
-      }
-    });
+  this.document.getMeasure(startMeasure).getStaves().forEach(function(s) {
+    if (typeof s.clef == "string" && ! s.getModifier("clef")) {
+      s.addModifier({type: "clef", clef: s.clef, automatic: true});
+    }
+    if (typeof s.key == "string" && ! s.getModifier("key")) {
+      s.addModifier({type: "key", key: s.key, automatic: true});
+    }
+    // Time signature on first measure of piece only
+    if (startMeasure == 0 && ! s.getModifier("time")) {
+      if (typeof s.time_signature == "string")
+        s.addModifier({type: "time", time: s.time_signature,automatic:true});
+      else if (typeof s.time == "object")
+        s.addModifier(Vex.Merge({type: "time", automatic: true}, s.time));
+    }
   });
   
   // Store x, width of staves (y calculated automatically)
@@ -377,6 +375,14 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.getBlock = function(b) {
     var curMeasure = startMeasure;
     var width = start_x + 10;
     while (width < this.width && curMeasure < numMeasures) {
+      // Except for first measure, remove automatic modifiers
+      // If there were any, invalidate the measure width
+      if (curMeasure != startMeasure)
+        this.document.getMeasure(curMeasure).getStaves().forEach(function(s) {
+          if (s.deleteAutomaticModifiers()
+              && this.minMeasureWidths && curMeasure in this.minMeasureWidths)
+            delete this.minMeasureWidths[curMeasure];
+        });
       width += this.getMinMeasureWidth(curMeasure);
       curMeasure++;
     }

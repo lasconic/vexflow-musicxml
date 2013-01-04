@@ -320,7 +320,11 @@ Vex.Flow.Measure.Stave.prototype.addModifier = function(modifier) {
   if (typeof modifier != "object" || typeof modifier.type != "string")
     throw new Vex.RERR("InvalidIRError",
                        "Stave modifier requires type string property");
-  var newModifier = {type: modifier.type}; // copy modifier
+  // Copy modifier
+  // Automatic modifier: created by formatter, can be deleted
+  var newModifier = {type: modifier.type,
+                     automatic: !!(modifier.automatic) // Force true/false
+                     };
   switch (modifier.type) {
     case "clef":
       if (typeof modifier.clef != "string")
@@ -367,10 +371,27 @@ Vex.Flow.Measure.Stave.prototype.deleteModifier = function(modifier) {
                        "deleteModifier requires string argument");
   // Create new modifier array with non-matching modifiers
   var newModifiers = new Array();
-  for (var i = 0; i < this.modifiers.length; i++)
-    if (this.modifiers[i].type != modifier)
-      newModifiers.push(this.modifiers[i]);
+  this.modifiers.forEach(function(mod) {
+    if (mod.type != modifier) newModifiers.push(mod);
+  });
   this.modifiers = newModifiers;
+}
+
+/**
+ * Delete all automatic modifiers (used by formatter when a measure is no
+ * longer at the beginning of a system.)
+ * @return {Boolean} Whether any modifiers were deleted
+ */
+Vex.Flow.Measure.Stave.prototype.deleteAutomaticModifiers = function() {
+  // Create new modifier array with modifiers that remain
+  var anyDeleted = false;
+  var newModifiers = new Array();
+  this.modifiers.forEach(function(mod) {
+    if (mod.automatic) anyDeleted = true;
+    else newModifiers.push(mod);
+  });
+  this.modifiers = newModifiers;
+  return anyDeleted;
 }
 
 /**
