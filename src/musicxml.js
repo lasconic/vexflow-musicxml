@@ -263,6 +263,7 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
           "32nd": "32", "64th": "64", "128th": "128", "256th": "256"
         }[type];
         break;
+      case "dot": duration += "d"; break; // Always follows type
       case "duration":
         intrinsicTicks = new Vex.Flow.Fraction(Vex.Flow.RESOLUTION / 4
                                                * parseInt(elem.textContent),

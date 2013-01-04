@@ -413,21 +413,3 @@ Vex.Flow.Measure.Note.Key.GetAccidental = function(key) {
   // Keep natural, return accidental from properties
   return Vex.Flow.keyProperties(key, "treble").accidental;
 }
-
-Vex.Flow.Measure.Note.prototype.getVexflowNote = function(options) {
-  if (! this._vexflowNote) {
-    var note_struct = Vex.Merge({}, options);
-    note_struct.keys = this.keys;
-    note_struct.duration = this.duration;
-    if (this.stem_direction) note_struct.stem_direction = this.stem_direction;
-    var vfNote = new Vex.Flow.StaveNote(note_struct);
-    var i = 0;
-    if (this.accidentals instanceof Array)
-      this.accidentals.forEach(function(acc) {
-        if (acc != null) vfNote.addAccidental(i, new Vex.Flow.Accidental(acc));
-        i++;
-      });
-    this._vexflowNote = vfNote;
-  }
-  return this._vexflowNote;
-}

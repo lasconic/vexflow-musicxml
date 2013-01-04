@@ -87,43 +87,6 @@ Vex.Flow.DocumentFormatter.prototype.createVexflowStave = function(s, x,y,w) {
 }
 
 /**
- * Create a Vex.Flow.Voice from a Vex.Flow.Measure.Voice.
- * Each note is added to the proper Vex.Flow.Stave in staves
- * (spanning multiple staves in a single voice not currently supported.)
- * @param {Vex.Flow.Measure.Voice} Voice object
- * @param {Array} Vex.Flow.Staves to add the notes to
- * @return {Array} Vex.Flow.Voice and array of objects to be drawn
- */
-Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
-  var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
-                                  beat_value: voice.time.beat_value,
-                                  resolution: Vex.Flow.RESOLUTION});
-  vfVoice.setMode(Vex.Flow.Voice.Mode.SOFT);
-  // TODO: support spanning multiple staves
-  if (typeof voice.stave != "number")
-    throw new Vex.RERR("InvalidIRError", "Voice should have stave property");
-  vfVoice.setStave(staves[voice.stave]);
-
-  var vexflowObjects = new Array();
-  var beamedNotes = undefined;
-  var clef = staves[voice.stave].clef;
-  for (var i = 0; i < voice.notes.length; i++) {
-    var note = voice.notes[i];
-    var vfNote = voice.notes[i].getVexflowNote({clef: clef});
-    vfVoice.addTickable(vfNote);
-    if (note.beam == "begin") beamedNotes = [vfNote];
-    else if (beamedNotes) {
-      beamedNotes.push(vfNote);
-      if (note.beam == "end") {
-        vexflowObjects.push(new Vex.Flow.Beam(beamedNotes));
-        beamedNotes = undefined;
-      }
-    }
-  }
-  return [vfVoice, vexflowObjects];
-}
-
-/**
  * Use getStaveX, getStaveY, getStaveWidth to create a Vex.Flow.Stave from
  * the document and store it in vfStaves.
  * @param {Number} Measure number
@@ -146,6 +109,66 @@ Vex.Flow.DocumentFormatter.prototype.getStave = function(m, s) {
   if (! (m in this.vfStaves)) this.vfStaves[m] = [];
   this.vfStaves[m][s] = vfStave;
   return vfStave;
+}
+
+/**
+ * Create a Vex.Flow.Voice from a Vex.Flow.Measure.Voice.
+ * Each note is added to the proper Vex.Flow.Stave in staves
+ * (spanning multiple staves in a single voice not currently supported.)
+ * @param {Vex.Flow.Measure.Voice} Voice object
+ * @param {Array} Vex.Flow.Staves to add the notes to
+ * @return {Array} Vex.Flow.Voice and array of objects to be drawn
+ */
+Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
+  var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
+                                  beat_value: voice.time.beat_value,
+                                  resolution: Vex.Flow.RESOLUTION});
+  vfVoice.setMode(Vex.Flow.Voice.Mode.SOFT);
+  // TODO: support spanning multiple staves
+  if (typeof voice.stave != "number")
+    throw new Vex.RERR("InvalidIRError", "Voice should have stave property");
+  vfVoice.setStave(staves[voice.stave]);
+
+  var vexflowObjects = new Array();
+  var beamedNotes = undefined;
+  var clef = staves[voice.stave].clef;
+  for (var i = 0; i < voice.notes.length; i++) {
+    var note = voice.notes[i];
+    var vfNote = this.getVexflowNote(voice.notes[i], {clef: clef});
+    vfVoice.addTickable(vfNote);
+    if (note.beam == "begin") beamedNotes = [vfNote];
+    else if (beamedNotes) {
+      beamedNotes.push(vfNote);
+      if (note.beam == "end") {
+        vexflowObjects.push(new Vex.Flow.Beam(beamedNotes));
+        beamedNotes = undefined;
+      }
+    }
+  }
+  return [vfVoice, vexflowObjects];
+}
+
+/**
+ * Create a Vex.Flow.StaveNote from a Vex.Flow.Measure.Note.
+ * @param {Vex.Flow.Measure.Note} Note object
+ * @param {Object} Options (currently only clef)
+ * @return {Vex.Flow.StaveNote} StaveNote object
+ */
+Vex.Flow.DocumentFormatter.prototype.getVexflowNote = function(note, options) {
+  var note_struct = Vex.Merge({}, options);
+  note_struct.keys = note.keys;
+  note_struct.duration = note.duration;
+  if (note.stem_direction) note_struct.stem_direction = note.stem_direction;
+  var vfNote = new Vex.Flow.StaveNote(note_struct);
+  var i = 0;
+  if (note.accidentals instanceof Array)
+    note.accidentals.forEach(function(acc) {
+      if (acc != null) vfNote.addAccidental(i, new Vex.Flow.Accidental(acc));
+      i++;
+    });
+  var numDots = Vex.Flow.parseNoteDurationString(note.duration).dots;
+  for (var i = 0; i < numDots; i++) vfNote.addDotToAll();
+  return vfNote;
 }
 
 Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
