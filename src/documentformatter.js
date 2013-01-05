@@ -284,12 +284,11 @@ Vex.Flow.DocumentFormatter.prototype.drawMeasure =
 
 Vex.Flow.DocumentFormatter.prototype.drawBlock = function(b, context) {
   this.getBlock(b);
-  var that = this;
   var measures = this.measuresInBlock[b];
   measures.forEach(function(m) {
     var stave = 0;
-    while (that.getStave(m, stave)) stave++;
-    this.drawMeasure(that.document.getMeasure(m), that.vfStaves[m], context,
+    while (this.getStave(m, stave)) stave++;
+    this.drawMeasure(this.document.getMeasure(m), this.vfStaves[m], context,
                      // Always connect start of individial stave
                      // Connect end if this is the last measure
                      1 | (2*Number(m == measures[measures.length - 1]))
@@ -372,7 +371,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.getBlock = function(b) {
     this.blockDimensions[b] = block;
     this.measuresInBlock[b] = [startMeasure];
     this.measureX[startMeasure] = start_x;
-    this.measureWidth[startMeasure] = block.width - start_x - 10;
+    this.measureWidth[startMeasure] = block[0] - start_x - 10;
   }
   else {
     var curMeasure = startMeasure;
