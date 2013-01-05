@@ -503,20 +503,6 @@ Vex.Flow.StaveNote.prototype.draw = function() {
         Vex.Flow.renderGlyph(ctx, head_x,
             y, this.render_options.glyph_font_scale, code_head);
       }
-
-      // If note above/below the staff, draw the small staff
-      if (line <= 0 || line >= 6) {
-        var line_y = y;
-        var floor = Math.floor(line);
-        if (line < 0 && floor - line == -0.5)
-          line_y -= 5;
-        else if (line > 6 &&  floor - line == -0.5)
-          line_y += 5;
-        ctx.fillRect(
-          head_x - this.render_options.stroke_px, line_y,
-          ((head_x + glyph.head_width) - head_x) +
-          (this.render_options.stroke_px * 2), 1);
-      }
     }
   }
 
