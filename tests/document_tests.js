@@ -12,7 +12,7 @@ Vex.Flow.Test.Document.Start = function() {
   Vex.Flow.Test.runTest("Basic JSON IR Test", Vex.Flow.Test.Document.jsonSimple);
   Vex.Flow.Test.runTest("Complex JSON IR Test", Vex.Flow.Test.Document.jsonComplex);
   Vex.Flow.Test.runTest("Basic MusicXML Test", Vex.Flow.Test.Document.xmlSimple);
-  //Vex.Flow.Test.runTest("MusicXML Document Test", Vex.Flow.Test.Document.xmlDoc);
+  Vex.Flow.Test.runTest("MusicXML Document Test", Vex.Flow.Test.Document.xmlDoc);
 };
 
 Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
@@ -88,9 +88,12 @@ Vex.Flow.Test.Document.jsonSimple = function(options, contextBuilder) {
          {type: "note", keys: ["a/4"], duration: "4"},
          {type: "note", keys: ["bb/4"], duration: "8", beam: "begin",
           stem_direction: -1},
-         {type: "note", keys: ["c/5"], duration: "8", stem_direction: -1},
-         {type: "note", keys: ["b/4"], duration: "16", stem_direction: -1},
-         {type: "note", keys: ["e/5"], duration: "16", stem_direction: -1},
+         {type: "note", keys: ["c/5"], duration: "8", beam: "continue",
+          stem_direction: -1},
+         {type: "note", keys: ["b/4"], duration: "16", beam: "continue",
+          stem_direction: -1},
+         {type: "note", keys: ["e/5"], duration: "16", beam: "continue",
+          stem_direction: -1},
          {type: "note", keys: ["f/5"], duration: "8", beam: "end",
           stem_direction: -1}
         ]}
@@ -136,9 +139,12 @@ Vex.Flow.Test.Document.jsonComplex = function(options, contextBuilder) {
          {type: "note", keys: ["a/4"], duration: "4"},
          {type: "note", keys: ["b/4"], duration: "8", beam: "begin",
           stem_direction: -1},
-         {type: "note", keys: ["c/5"], duration: "8", stem_direction: -1},
-         {type: "note", keys: ["d/5"], duration: "16", stem_direction: -1},
-         {type: "note", keys: ["e/5"], duration: "16", stem_direction: -1},
+         {type: "note", keys: ["c/5"], duration: "8", beam: "continue",
+          stem_direction: -1},
+         {type: "note", keys: ["d/5"], duration: "16", beam: "continue",
+          stem_direction: -1},
+         {type: "note", keys: ["e/5"], duration: "16", beam: "continue",
+          stem_direction: -1},
          {type: "note", keys: ["f/5"], duration: "8", beam: "end",
           stem_direction: -1}
         ]}
@@ -211,27 +217,26 @@ Vex.Flow.Test.Document.Fetch = function(uri) {
   return req.responseText;
 };
 Vex.Flow.Test.Document.xmlDoc = function(options, contextBuilder) {
-  function ok(status_bool, msg) {if (console && console.log) console.log(msg);}
   var docString;
   try {
-    docString = Vex.Flow.Test.Document.Fetch("support/bach_bwv846p.xml");
+    docString = Vex.Flow.Test.Document.Fetch("../docs/samples/bach_bwv846p.xml");
   }
   catch (e) {
     ok(true, "Skipping test; browser does not support local file:// AJAX");
     return;
   }
   if (! docString) {
-    ok(false, "Document support/bach_bwv846p.xml does not exist");
+    ok(false, "Document does not exist");
     return;
   }
   expect(2);
   var doc = new Vex.Flow.Document(docString);
   ok(true, "created document");
 
-  var ctx = new contextBuilder(options.canvas_sel, 300, 120);
-  var elem = document.createElement("div");
-  elem.id = "vexflow_test_document";
-  $("#vexflow_testoutput")[0].appendChild(elem);
-  doc.getFormatter().draw(elem);
+  var formatter = doc.getFormatter();
+  formatter.setWidth(800);
+  var ctx = new contextBuilder(options.canvas_sel, 480, 120);
+  ctx.scale(0.6, 0.6);
+  formatter.drawBlock(0, ctx);
   ok(true, "drew document");
 };
