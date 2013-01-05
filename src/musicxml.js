@@ -318,12 +318,15 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
       case "notations":
         Array.prototype.forEach.call(elem.childNodes, function(notationElem) {
           switch (notationElem.nodeName) {
-            case "tied": // start-continue-stop vs begin-continue-end
+            case "tied": // start-start/stop-stop vs begin-continue-end
               var tie = notationElem.getAttribute("type");
               switch (tie) {
-                case "start": noteObj.tie = "begin"; break;
-                case "continue": noteObj.tie = "continue"; break;
-                case "stop": noteObj.tie = "end"; break;
+                case "start":
+                  noteObj.tie = (noteObj.tie == "end") ? "continue" : "begin";
+                  break;
+                case "stop":
+                  noteObj.tie = (noteObj.tie == "begin") ? "continue" : "end";
+                  break;
                 default: Vex.RERR("BadMusicXML", "Bad tie: " + tie.toString());
               }
               break;
