@@ -1,0 +1,92 @@
+<html>
+<head>
+  <title>VexFlow Viewer</title>
+  <link href='http://fonts.googleapis.com/css?family=OFL+Sorts+Mill+Goudy+TT|Yanone+Kaffeesatz|Tangerine'
+   rel='stylesheet' type='text/css'>
+  <link href="../vextab/style.css" media="screen" rel="Stylesheet"
+    type="text/css" />
+
+  <!-- VexFlow Compiled Source -->
+  <script src="../support/vexflow-min.js"></script>
+
+  <!-- Support Sources -->
+  <script src="../support/jquery.js"></script>
+  <script src="../support/raphael.js"></script>
+
+  <style type="text/css">
+    div.egcode {
+      font-family: Courier;
+      font-size: 14px;
+    }
+
+    div.content {
+      overflow: hidden;
+      width: 100%;
+      padding: 0; margin: 0;
+    }
+  </style>
+
+  <script>
+    // source: http://stackoverflow.com/a/901144
+    function getParameter(name) {
+      name = name.replace(/\[]/, "\\\[").replace(/[\]]/, "\\\]");
+      var regex = new RegExp("[\\?&]" + name + "=([^&#]*)");
+      var results = regex.exec(window.location.search);
+      if (results == null) return undefined;
+      else return decodeURIComponent(results[1].replace(/\+/g, " "));
+    }
+
+    var VexDocument = null;
+    var VexFormatter = null;
+    $(document).ready(function() {
+      var req = new XMLHttpRequest();
+      var uri = getParameter('doc');
+      if (! uri) uri = 'bach_bwv846p.xml';
+      var loadStart = new Date().getTime(); // time load
+      req.open('GET', "samples/" + uri, true);
+      req.onreadystatechange = function() {
+        if (req.readyState != 4) return;
+        var loadElapsed = (new Date().getTime() - loadStart)/1000;
+        if (typeof console != "undefined" && typeof console.log == "function")
+          console.log("Time to load document: " + loadElapsed.toString());
+        var start = new Date().getTime(); // time execution
+        try {
+          VexDocument = new Vex.Flow.Document(req.responseText);
+        }
+        catch (e) {
+          $(".content")[0].innerHTML = "There was an error with the document.";
+        }
+        var content = $(".content")[0];
+        if (VexDocument) {
+          VexFormatter = VexDocument.getFormatter();
+          VexFormatter.draw(content);
+        }
+        var elapsed = (new Date().getTime() - start)/1000;
+        if (typeof console != "undefined" && typeof console.log == "function")
+          console.log("Time to display document: " + elapsed.toString());
+        $(window).resize(function() { VexFormatter.draw(content); });
+      };
+      req.send(null);
+    });
+  </script>
+</head>
+
+<body>
+  <div class="vex">
+    <a href="http://vexflow.com">VexFlow</a> |
+    <a href="http://my.vexflow.com">My VexFlow</a> |
+    <a href="http://vexflow.com/vextab">VexTab</a> |
+    <a href="http://0xfe.blogspot.com">0xfe</a>
+  </div>
+
+  <div class="header">
+    <h1>VexFlow Viewer</h1>
+    <div class="main">
+      <b>View MusicXML and JSON documents</b>
+    </div>
+  </div>
+
+  <div class="content">
+  </div>
+</body>
+</html>
