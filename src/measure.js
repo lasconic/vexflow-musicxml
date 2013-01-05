@@ -233,9 +233,6 @@ Vex.Flow.Measure.Voice = function(object) {
   if (typeof object.stave == "number") this.stave = object.stave;
   else this.stave = 0;
 
-  this._vexflowVoice = null;
-  this._vexflowObjects = null;
-
   this.type = "voice";
 }
 
@@ -421,8 +418,6 @@ Vex.Flow.Measure.Note = function(object) {
             ? object.beam : null;
   this.tie = (typeof object.tie == "string")
            ? object.tie : null;
-
-  this._vexflowNote = null;
 
   this.type = "note";
 }
