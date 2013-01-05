@@ -446,7 +446,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
     elem.innerHTML = "";
     this.canvases = [];
   }
-  var width = $(elem).width(); // TODO: can we use jQuery?
+  var width = $(elem).width() - 10; // TODO: can we use jQuery?
   if (typeof width == "number") {
     if (width != this.width) {
       // Invalidate all blocks/staves/voices
