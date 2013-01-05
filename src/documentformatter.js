@@ -31,6 +31,10 @@ Vex.Flow.DocumentFormatter.prototype.init = function(document) {
 
   // Minimum measure widths can be used for formatting by subclasses
   this.minMeasureWidths = [];
+  // minMeasureHeights:
+  //  this.minMeasureHeights[m][0] is space above measure
+  //  this.minMeasureHeights[m][s+1] is minimum height of stave s
+  this.minMeasureHeights = [];
 }
 
 /**
@@ -47,7 +51,24 @@ Vex.Flow.DocumentFormatter.prototype.init = function(document) {
 Vex.Flow.DocumentFormatter.prototype.getStaveY = function(m, s) {
   // Default behavour: calculate from stave above this one (or 0 for top stave)
   // (Have to make sure not to call getStave on this stave)
-  if (s == 0) return 0;
+  // If s == 0 and we are in a block, use the max extra space above the
+  // top stave on any measure in the block
+  if (s == 0) {
+    var extraSpace = 0;
+    // Find block for this measure
+    this.measuresInBlock.forEach(function(measures) {
+      if (measures.indexOf(m) > -1) {
+        var maxExtraSpace = 50 - (new Vex.Flow.Stave(0,0,500).getYForLine(0));
+        measures.forEach(function(measure) {
+          var extra = this.getMinMeasureHeight(measure)[0];
+          if (extra > maxExtraSpace) maxExtraSpace = extra;
+        }, this);
+        extraSpace = maxExtraSpace;
+        return;
+      }
+    }, this);
+    return extraSpace;
+  }
 
   var higherStave = this.getStave(m, s - 1);
   return higherStave.y + higherStave.getHeight();
@@ -178,7 +199,7 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowNote = function(note, options) {
 }
 
 Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
-  if (! this.minMeasureWidths || ! (m in this.minMeasureWidths)) {
+  if (! (m in this.minMeasureWidths)) {
     // Calculate the maximum extra width on any stave (due to modifiers)
     var maxExtraWidth = 0;
     var measure = this.document.getMeasure(m);
@@ -209,9 +230,43 @@ Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
       if (numTickables > maxTickables) maxTickables = numTickables;
     });
     this.minMeasureWidths[m] = maxExtraWidth + noteWidth + maxTickables*5 + 10;
+
+    // Calculate minMeasureHeight by merging bounding boxes from each voice
+    // and the bounding box from the stave
+    var minHeights = [];
+    // Initialize to zero
+    for (var i = 0; i < vfStaves.length + 1; i++) minHeights.push(0);
+
+    var i=-1; // allVfVoices consecutive by stave, increment for each new stave
+    var lastStave = null;
+    var staveY = vfStaves[0].getYForLine(0);
+    var staveH = vfStaves[0].getYForLine(4) - staveY;
+    var lastBoundingBox = null;
+    allVfVoices.forEach(function(v) {
+      if (v.stave !== lastStave) {
+        if (i >= 0) {
+          minHeights[i]  += -lastBoundingBox.getY();
+          minHeights[i+1] =  lastBoundingBox.getH()
+                            +lastBoundingBox.getY();
+        }
+        lastBoundingBox = new Vex.Flow.BoundingBox(0, staveY, 500, staveH);
+        lastStave = v.stave;
+        i++;
+      }
+      lastBoundingBox.mergeWith(v.getBoundingBox());
+    });
+    minHeights[i]  += -lastBoundingBox.getY();
+    minHeights[i+1] =  lastBoundingBox.getH()
+                      +lastBoundingBox.getY();
+    this.minMeasureHeights[m] = minHeights;
   }
   return this.minMeasureWidths[m];
 };
+
+Vex.Flow.DocumentFormatter.prototype.getMinMeasureHeight = function(m) {
+  if (! (m in this.minMeasureHeights)) this.getMinMeasureWidth(m);
+  return this.minMeasureHeights[m];
+}
 
 // Internal drawing functions
 // drawConnector: 0 = none, 1 = single at start, 2 = single at end,
@@ -411,7 +466,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.getBlock = function(b) {
     this.blockDimensions[b] = [this.width, 0];
   }
 
-  // Calculate height of first measure, use as total height
+  // Calculate height of first measure
   var i = 0;
   var lastStave = undefined;
   var stave = this.getStave(startMeasure, 0);
@@ -420,7 +475,15 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.getBlock = function(b) {
     i++;
     stave = this.getStave(startMeasure, i);
   }
-  var height = this.getStaveY(startMeasure, i-1) + lastStave.getHeight();
+  var height = this.getStaveY(startMeasure, i-1);
+  // Add max extra space for last stave on any measure in this block
+  var maxExtraHeight = 90; // default: height of stave
+  for (var i = startMeasure; i <= endMeasure; i++) {
+    var minHeights = this.getMinMeasureHeight(i);
+    var extraHeight = minHeights[minHeights.length - 1];
+    if (extraHeight > maxExtraHeight) maxExtraHeight = extraHeight;
+  }
+  height += maxExtraHeight;
   this.blockDimensions[b][1] = height;
 
   return this.blockDimensions[b];
