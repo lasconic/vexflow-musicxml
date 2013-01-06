@@ -132,6 +132,7 @@ Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
     var attrs = this.getAttributes(m, p);
     var partOptions = {time: time};
     if (typeof attrs.clef == "string") partOptions.clef = attrs.clef;
+    if (typeof attrs.key  == "string") partOptions.key  = attrs.key;
     measure.setPart(p, partOptions);
     var part = measure.getPart(p);
     part.setNumberOfStaves(this.numStaves[p]);
@@ -141,24 +142,27 @@ Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
     var numVoices = 1; // can expand dynamically
     var noteElems = this.measures[m][p].getElementsByTagName("note");
     var voiceObjects = new Array(); // array of arrays
+    var lastNote = null; // Hold on to last note in case there is a chord
     for (var i = 0; i < noteElems.length; i++) {
       // FIXME: Chord support
       var noteObj = this.parseNote(noteElems[i], attrs);
       var voiceNum = 0;
-      if (noteObj.voice) {
+      if (typeof noteObj.voice == "number") {
         if (noteObj.voice >=numVoices) part.setNumberOfVoices(noteObj.voice+1);
         voiceNum = noteObj.voice;
-        delete noteObj.voice;
       }
       var voice = part.getVoice(voiceNum);
       if (voice.notes.length == 0 && typeof noteObj.stave == "number") {
         // TODO: voice spanning multiple staves (requires VexFlow support)
         voice.stave = noteObj.stave;
       }
-      if (noteObj.chord)
-        voice.notes[voice.notes.length-1].keys.push(noteObj.keys[0]);
-      else voice.addNote(new Vex.Flow.Measure.Note(noteObj));
+      if (noteObj.chord) lastNote.keys.push(noteObj.keys[0]);
+      else {
+        if (lastNote) part.getVoice(lastNote.voice || 0).addNote(lastNote);
+        lastNote = noteObj;
+      }
     }
+    if (lastNote) part.getVoice(lastNote.voice || 0).addNote(lastNote);
     // Voices appear to not always be consecutive from 0
     // Copy part and number voices correctly
     // FIXME: Figure out why this happens
@@ -189,10 +193,8 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
           this.numStaves[partNum] = parseInt(attr.textContent);
         break;
       case "key":
-        attrObject = {
-          fifths: parseInt(attr.getElementsByTagName("fifths")[0]
-                                   .textContent)
-        };
+        attrObject = this.fifthsToKey(parseInt(attr.getElementsByTagName(
+                                                 "fifths")[0].textContent));
         break;
       case "time":
         attrObject = {

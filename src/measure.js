@@ -255,7 +255,8 @@ Vex.Flow.Measure.Voice.keyAccidentals = function(key) {
 Vex.Flow.Measure.Voice.prototype.addNote = function(note) {
   // TODO: Check total ticks in voice
   var noteObj = new Vex.Flow.Measure.Note(note); // copy note
-  if (this.key && note.accidentals == null) { // automatic accidentals
+  if (!note.rest && this.key && note.accidentals == null) {
+    // Generate accidentals automatically
     // Track accidentals used previously in measure
     if (! this._accidentals)
       this._accidentals = Vex.Flow.Measure.Voice.keyAccidentals(this.key);
