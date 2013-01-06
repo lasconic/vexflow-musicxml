@@ -1,7 +1,7 @@
 #!/bin/bash
 # Deploy demo.
 #
-# Pushes only JavaScript, tests, and supporting HTML (tutorial, playground)
+# Pushes JavaScript, tests, and docs (containing viewer and samples)
 
 /bin/echo -n "Target directory: "
 read TARGET

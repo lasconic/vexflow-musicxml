@@ -229,7 +229,7 @@ Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
       var numTickables = v.tickables.length;
       if (numTickables > maxTickables) maxTickables = numTickables;
     });
-    this.minMeasureWidths[m] = maxExtraWidth + noteWidth + maxTickables*5 + 10;
+    this.minMeasureWidths[m] = maxExtraWidth + noteWidth + maxTickables*8 + 10;
 
     // Calculate minMeasureHeight by merging bounding boxes from each voice
     // and the bounding box from the stave
@@ -371,6 +371,11 @@ Vex.Flow.DocumentFormatter.prototype.drawBlock = function(b, context) {
 Vex.Flow.DocumentFormatter.Liquid = function(document) {
   if (arguments.length > 0) Vex.Flow.DocumentFormatter.call(this, document);
   this.width = 500; // default value
+  this.zoom = 0.8;
+  this.scale = 1.0;
+  if (typeof window.devicePixelRatio == "number"
+      && window.devicePixelRatio > 1)
+    this.scale = Math.floor(window.devicePixelRatio);
 }
 Vex.Flow.DocumentFormatter.Liquid.prototype = new Vex.Flow.DocumentFormatter();
 Vex.Flow.DocumentFormatter.Liquid.constructor
@@ -509,7 +514,8 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
     elem.innerHTML = "";
     this.canvases = [];
   }
-  var width = $(elem).width() - 10; // TODO: can we use jQuery?
+  var canvasWidth = $(elem).width() - 10; // TODO: can we use jQuery?
+  var width = Math.floor(canvasWidth / this.zoom) * this.scale;
   if (typeof width == "number") {
     if (width != this.width) {
       // Invalidate all blocks/staves/voices
@@ -524,12 +530,18 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
   var b = 0;
   while (this.getBlock(b)) {
     var canvas, context;
+    var dims = this.blockDimensions[b];
+    var width = Math.ceil(dims[0] * this.zoom);
+    var height = Math.ceil(dims[1] * this.zoom);
     if (! this.canvases[b]) {
       canvas = document.createElement('canvas');
-      canvas.width = this.blockDimensions[b][0];
-      canvas.height = this.blockDimensions[b][1];
-      if (typeof elem.id == "string")
-        canvas.id = elem.id + "_canvas" + b.toString();
+      canvas.width = width;
+      canvas.height = height;
+      if (this.scale > 1) {
+        canvas.style.width = (width / this.scale).toString() + "px";
+        canvas.style.height = (height / this.scale).toString() + "px";
+      }
+      canvas.id = elem.id + "_canvas" + b.toString();
       // If a canvas exists after this one, insert before that canvas
       for (var a = b + 1; this.getBlock(a); a++)
         if (typeof this.canvases[a] == "object") {
@@ -543,12 +555,19 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
     }
     else {
       canvas = this.canvases[b];
-      canvas.width = this.width;
+      canvas.style.display = "inherit";
+      canvas.width = width;
+      canvas.style.width = (width / this.scale).toString() + "px";
       var context = canvas.getContext("2d");
       context.clearRect(0, 0, canvas.width, canvas.height);
     }
+    context.scale(this.zoom, this.zoom);
     this.drawBlock(b, context);
     b++;
   }
-  // TODO: remove old canvases/other elements
+  while (typeof this.canvases[b] == "object") {
+    // Hide canvases beyond the ones being displayed
+    this.canvases[b].style.display = "none";
+    b++;
+  }
 }
