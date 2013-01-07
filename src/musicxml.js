@@ -313,9 +313,11 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
         break;
       case "beam":
         var beam = elem.textContent;
-        Vex.Assert(beam == "begin" || beam == "continue" || beam == "end",
-                   "Bad beam in MusicXML: " + beam.toString());
-        noteObj.beam = beam;
+        if (beam != "begin" && beam != "continue" && beam != "end") break;
+        // "continue" overrides begin or end when there are multiple beams
+        // TODO: support backward hook/forward hook,
+        //       partial beam between groups of notes where needed
+        if (noteObj.beam != "continue") noteObj.beam = beam;
         break;
       case "notations":
         Array.prototype.forEach.call(elem.childNodes, function(notationElem) {
