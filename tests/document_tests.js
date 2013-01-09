@@ -223,6 +223,7 @@ Vex.Flow.Test.Document.xmlDoc = function(options, contextBuilder) {
   }
   catch (e) {
     ok(true, "Skipping test; browser does not support local file:// AJAX");
+    $("#" + options.canvas_sel).replaceWith("Skip: Make sure your browser supports file:// AJAX requests.");
     return;
   }
   if (! docString) {

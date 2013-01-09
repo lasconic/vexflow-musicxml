@@ -413,6 +413,19 @@ Vex.Flow.Measure.Note = function(object) {
   // Note: accidentals set by voice if this.accidentals == null
   //       no accidentals           if this.accidentals == [null, ...]
   this.duration = object.duration;
+  this.rest = !!(object.rest); // force true or false
+  this.intrinsicTicks = (object.intrinsicTicks > 0)
+                      ? object.intrinsicTicks : null;
+  this.tickMultiplier = (typeof object.tickMultiplier == "object"
+                         && object.tickMultiplier)
+                      ? new Vex.Flow.Fraction(object.tickMultiplier.numerator,
+                              object.tickMultiplier.denominator)
+                      : this.intrinsicTicks
+                      ? new Vex.Flow.Fraction(1, 1) : null;
+  this.tuplet = (typeof object.tuplet == "object" && object.tuplet)
+              ? {num_notes: object.tuplet.num_notes,
+                 beats_occupied: object.tuplet.beats_occupied}
+              : null;
   this.stem_direction = (typeof object.stem_direction == "number")
                       ? object.stem_direction : null;
   this.beam = (typeof object.beam == "string")

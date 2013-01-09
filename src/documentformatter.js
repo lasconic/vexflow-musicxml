@@ -152,6 +152,7 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   var vexflowObjects = new Array();
   var beamedNotes = null; // array of all vfNotes in beam
   var tiedNote = null; // only last vFNote in tie
+  var tupletNotes = null, tupletOpts = null;
   var clef = staves[voice.stave].clef;
   for (var i = 0; i < voice.notes.length; i++) {
     var note = voice.notes[i];
@@ -161,7 +162,7 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
     else if (note.beam && beamedNotes) {
       beamedNotes.push(vfNote);
       if (note.beam == "end") {
-        vexflowObjects.push(new Vex.Flow.Beam(beamedNotes));
+        vexflowObjects.push(new Vex.Flow.Beam(beamedNotes, true));
         beamedNotes = null;
       }
     }
@@ -171,6 +172,17 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
         first_note: tiedNote, last_note: vfNote
       }));
     if (note.tie == "begin" || note.tie == "continue") tiedNote = vfNote;
+    if (note.tuplet) {
+      if (tupletNotes) tupletNotes.push(vfNote);
+      else {
+        tupletNotes = [vfNote];
+        tupletOpts = note.tuplet;
+      }
+      if (tupletNotes.length == tupletOpts.num_notes) {
+        vexflowObjects.push(new Vex.Flow.Tuplet(tupletNotes, tupletOpts));
+        tupletNotes = null; tupletOpts = null;
+      }
+    }
   }
   return [vfVoice, vexflowObjects];
 }

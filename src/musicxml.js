@@ -236,8 +236,9 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
 }
 
 Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
-  var num_notes = null, beats_occupied = null;
   var noteObj = {rest: false, chord: false};
+  noteObj.tickMultiplier = new Vex.Flow.Fraction(1, 1);
+  noteObj.tuplet = null;
   Array.prototype.forEach.call(noteElem.childNodes, function(elem) {
     switch (elem.nodeName) {
       case "pitch":
@@ -281,13 +282,17 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
           intrinsicTicks = intrinsicTicks.numerator;
         noteObj.intrinsicTicks = intrinsicTicks;
         // TODO: come up with duration string if we don't have a type
+        if (! noteObj.duration) noteObj.duration = "4";
         break;
       case "time-modification":
-        num_notes = elem.getElementsByTagName("actual-notes")[0];
-        beats_occupied = elem.getElementsByTagName("normal-notes")[0];
+        var num_notes = elem.getElementsByTagName("actual-notes")[0];
+        var beats_occupied = elem.getElementsByTagName("normal-notes")[0];
         if (num_notes && beats_occupied) {
           num_notes = parseInt(num_notes.textContent);
           beats_occupied = parseInt(beats_occupied.textContent);
+          if (! (num_notes > 0 && beats_occupied > 0)) break;
+          noteObj.tickMultiplier = new Vex.Flow.Fraction(beats_occupied, num_notes);
+          noteObj.tuplet = {num_notes: num_notes, beats_occupied: beats_occupied};
         }
         break;
       case "rest":
@@ -296,6 +301,8 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
         var octave = elem.getElementsByTagName("display-octave")[0];
         if (step && octave)
           noteObj.keys = [step.textContent + "/" + octave.textContent];
+        // FIXME: default length for rest only if length is full measure
+        if (! noteObj.duration) noteObj.duration = "1r";
         break;
       case "chord": noteObj.chord = true; break;
       case "voice":
@@ -339,14 +346,6 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
         break;
     }
   });
-  if (num_notes && beats_occupied) {
-    noteObj.tickMultiplier = new Vex.Flow.Fraction(beats_occupied, num_notes);
-    noteObj.tuplet = {num_notes: num_notes, beats_occupied: beats_occupied};
-  }
-  else {
-    noteObj.tickMultiplier = new Vex.Flow.Fraction(1, 1);
-    noteObj.tuplet = null;
-  }
   // Set default rest position now that we know the stave
   if (noteObj.rest && ! noteObj.keys) {
     var clef = attrs.clef;
