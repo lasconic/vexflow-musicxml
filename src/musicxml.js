@@ -212,7 +212,6 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
                  : (sign == "F" && line == "4") ? "bass"
                  : null;
         if (number > 0) {
-          // TODO: fix getAttributes when only one clef changes
           if (measureNum in this.attributes
               && partNum in this.attributes[measureNum]
               && this.attributes[measureNum][partNum].clef instanceof Array)
@@ -366,10 +365,23 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
 Vex.Flow.Backend.MusicXML.prototype.getAttributes = function(m, p) {
   var attrs = {};
   // Merge with every previous attributes object in order
+  // If value is an array, merge non-null indices only
   for (var i = 0; i <= m; i++) {
     if (! (i in this.attributes)) continue;
     if (! (p in this.attributes[i])) continue;
-    Vex.Merge(attrs, this.attributes[i][p]);
+    var measureAttrs = this.attributes[i][p];
+    for (key in measureAttrs) {
+      var val = measureAttrs[key];
+      if (val instanceof Array) {
+        if (! (attrs[key] && attrs[key] instanceof Array))
+          attrs[key] = [];
+        for (var ind = 0; ind < val.length; ind++)
+          if (typeof attrs[key][ind] == "undefined"
+              || (typeof val[ind] != "undefined" && val[ind] != null))
+            attrs[key][ind] = val[ind];
+      }
+      else attrs[key] = val;
+    }
   }
   return attrs;
 }
