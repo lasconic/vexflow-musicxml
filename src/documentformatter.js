@@ -157,7 +157,6 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   for (var i = 0; i < voice.notes.length; i++) {
     var note = voice.notes[i];
     var vfNote = this.getVexflowNote(voice.notes[i], {clef: clef});
-    vfVoice.addTickable(vfNote);
     if (note.beam == "begin") beamedNotes = [vfNote];
     else if (note.beam && beamedNotes) {
       beamedNotes.push(vfNote);
@@ -180,10 +179,14 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
       }
       if (tupletNotes.length == tupletOpts.num_notes) {
         vexflowObjects.push(new Vex.Flow.Tuplet(tupletNotes, tupletOpts));
+        tupletNotes.forEach(function(n) { vfVoice.addTickable(n) });
         tupletNotes = null; tupletOpts = null;
       }
     }
+    else vfVoice.addTickable(vfNote);
   }
+  Vex.Assert(vfVoice.stave instanceof Vex.Flow.Stave,
+             "VexFlow voice should have a stave");
   return [vfVoice, vexflowObjects];
 }
 
@@ -241,7 +244,8 @@ Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
       var numTickables = v.tickables.length;
       if (numTickables > maxTickables) maxTickables = numTickables;
     });
-    this.minMeasureWidths[m] = maxExtraWidth + noteWidth + maxTickables*8 + 10;
+    this.minMeasureWidths[m] = Vex.Max(50,
+             maxExtraWidth + noteWidth + maxTickables*10 + 10);
 
     // Calculate minMeasureHeight by merging bounding boxes from each voice
     // and the bounding box from the stave

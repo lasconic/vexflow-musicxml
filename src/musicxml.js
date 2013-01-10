@@ -146,6 +146,7 @@ Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
     for (var i = 0; i < noteElems.length; i++) {
       // FIXME: Chord support
       var noteObj = this.parseNote(noteElems[i], attrs);
+      if (noteObj.grace) continue; // grace note requires VexFlow support
       var voiceNum = 0;
       if (typeof noteObj.voice == "number") {
         if (noteObj.voice >=numVoices) part.setNumberOfVoices(noteObj.voice+1);
@@ -304,6 +305,7 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
         // FIXME: default length for rest only if length is full measure
         if (! noteObj.duration) noteObj.duration = "1r";
         break;
+      case "grace": noteObj.grace = true; break;
       case "chord": noteObj.chord = true; break;
       case "voice":
         var voice = parseInt(elem.textContent);
