@@ -69,6 +69,7 @@ Vex.Flow.Measure.prototype.getStave = function(staveNum) {
     var part = this.getPart(i);
     if (firstStaveForPart + part.getNumberOfStaves() > staveNum)
       return part.getStave(staveNum - firstStaveForPart);
+    firstStaveForPart += part.getNumberOfStaves();
   }
   return undefined;
 }

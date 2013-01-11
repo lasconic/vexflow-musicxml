@@ -81,9 +81,11 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
       for (var j = 0; j < node.childNodes.length; j++) {
         var measure = node.childNodes[j];
         if (measure.nodeName != "measure") continue;
-        if (! (j in this.measures)) this.measures[measureNum] = new Array();
+        if (! (measureNum in this.measures))
+          this.measures[measureNum] = new Array();
         if (this.measures[measureNum].length != partNum) {
           // Some part is missing a measure
+          Vex.LogFatal("Part missing measure");
           this.valid = false;
           return;
         }
@@ -124,7 +126,8 @@ Vex.Flow.Backend.MusicXML.prototype.getNumberOfMeasures = function() {
  * @return {Vex.Flow.Measure} mth measure as a Measure object
  */
 Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
-  var time = {num_beats: 4, beat_value: 4}; // FIXME time signature
+  var measure_attrs = this.getAttributes(m, 0);
+  var time = measure_attrs.time;
   var measure = new Vex.Flow.Measure({time: time});
   var numParts = this.measures[m].length;
   measure.setNumberOfParts(numParts);
@@ -210,6 +213,8 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
         var sign = attr.getElementsByTagName("sign")[0].textContent;
         var line = parseInt(attr.getElementsByTagName("line")[0].textContent);
         var clef = (sign == "G" && line == "2") ? "treble"
+                 : (sign == "C" && line == "3") ? "alto"
+                 : (sign == "C" && line == "4") ? "tenor"
                  : (sign == "F" && line == "4") ? "bass"
                  : null;
         if (number > 0) {
@@ -354,6 +359,8 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
     if (clef instanceof Array) clef = clef[noteObj.stave];
     switch (clef) {
       case "bass": noteObj.keys = ["D/3"]; break;
+      case "tenor": noteObj.keys = ["A/3"]; break;
+      case "alto": noteObj.keys = ["C/4"]; break;
       case "treble": default: noteObj.keys = ["B/4"]; break;
     }
   }

@@ -229,7 +229,7 @@ Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
     var startStave = 0; // stave for part to start on
     measure.getParts().forEach(function(part) {
       var numStaves = part.getNumberOfStaves();
-      var partStaves = vfStaves.slice(startStave, numStaves);
+      var partStaves = vfStaves.slice(startStave, startStave + numStaves);
       part.getVoices().forEach(function(voice) {
         allVfVoices.push(this.getVexflowVoice(voice, partStaves)[0]); }, this);
       startStave += numStaves;
