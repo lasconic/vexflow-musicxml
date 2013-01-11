@@ -285,37 +285,12 @@ Vex.Flow.DocumentFormatter.prototype.getMinMeasureHeight = function(m) {
 }
 
 // Internal drawing functions
-// drawConnector: 0 = none, 1 = single at start, 2 = single at end,
-//                4 = single connecting all parts (applies to drawMeasure),
-//                8 = brace (with bitwise OR)
 Vex.Flow.DocumentFormatter.prototype.drawPart =
-  function(part, vfStaves, context, drawConnector) {
+  function(part, vfStaves, context) {
   var staves = part.getStaves();
   var voices = part.getVoices();
 
   vfStaves.forEach(function(stave) { stave.setContext(context).draw(); });
-  // Draw connectors for multiple staves
-  if (vfStaves.length > 1) {
-    if (drawConnector & 1)
-      (new Vex.Flow.StaveConnector(vfStaves[0], vfStaves[vfStaves.length-1]))
-        .setType(Vex.Flow.StaveConnector.type.SINGLE)
-        .setContext(context).draw();
-    if (drawConnector & 2) {
-      // Create dummy staves which start after these staves
-      var stave1 = vfStaves[0], stave2 = vfStaves[vfStaves.length - 1];
-      var dummy1 = new Vex.Flow.Stave(stave1.x + stave1.width,
-                                      stave1.y, 100);
-      var dummy2 = new Vex.Flow.Stave(stave2.x + stave2.width,
-                                      stave2.y, 100);
-      (new Vex.Flow.StaveConnector(dummy1, dummy2))
-        .setType(Vex.Flow.StaveConnector.type.SINGLE)
-        .setContext(context).draw();
-    }
-    if ((drawConnector & 8) && part.showsBrace())
-      (new Vex.Flow.StaveConnector(vfStaves[0], vfStaves[vfStaves.length-1]))
-        .setType(Vex.Flow.StaveConnector.type.BRACE)
-        .setContext(context).draw();
-  }
 
   var allVfObjects = new Array();
   var vfVoices = voices.map(function(voice) {
@@ -336,21 +311,56 @@ Vex.Flow.DocumentFormatter.prototype.drawPart =
     obj.setContext(context).draw(); });
 }
 
+// Options contains system_start, system_end for measure
 Vex.Flow.DocumentFormatter.prototype.drawMeasure =
-  function(measure, vfStaves, context, drawConnector) {
+  function(measure, vfStaves, context, options) {
   var startStave = 0;
-  measure.getParts().forEach(function(part) {
+  var parts = measure.getParts();
+  parts.forEach(function(part) {
     var numStaves = part.getNumberOfStaves();
     var partStaves = vfStaves.slice(startStave, startStave + numStaves);
-    this.drawPart(part, partStaves, context, drawConnector);
+    this.drawPart(part, partStaves, context);
     startStave += numStaves;
   }, this);
-  if (vfStaves.length > 1 && (drawConnector & 4)) {
-    var connector = new Vex.Flow.StaveConnector(vfStaves[0],
-                                                vfStaves[vfStaves.length-1]);
-    connector.setType(Vex.Flow.StaveConnector.type.SINGLE);
-    connector.setContext(context).draw();
-  }
+
+  this.document.getStaveConnectors().forEach(function(connector) {
+    if (! ((options.system_start && connector.system_start)
+        || (options.system_end && connector.system_end)
+        || connector.measure_start || connector.measure_end)) return;
+    var firstPart = connector.parts[0],
+        lastPart = connector.parts[connector.parts.length - 1];
+    var firstStave, lastStave;
+    // Go through each part in measure to find the stave index
+    var staveNum = 0, partNum = 0;
+    parts.forEach(function(part) {
+      if (partNum == firstPart) firstStave = staveNum;
+      if (partNum == lastPart)
+        lastStave = staveNum + part.getNumberOfStaves() - 1;
+      staveNum += part.getNumberOfStaves();
+      partNum++;
+    });
+    if (isNaN(firstStave) || isNaN(lastStave)) return;
+    var type = connector.type == "single" ? Vex.Flow.StaveConnector.type.SINGLE
+             : connector.type == "double" ? Vex.Flow.StaveConnector.type.DOUBLE
+             : connector.type == "brace"  ? Vex.Flow.StaveConnector.type.BRACE
+             : connector.type =="bracket"? Vex.Flow.StaveConnector.type.BRACKET
+             : null;
+    if ((options.system_start && connector.system_start)
+        || connector.measure_start) {
+      (new Vex.Flow.StaveConnector(vfStaves[firstStave], vfStaves[lastStave])
+          ).setType(type).setContext(context).draw();
+    }
+    if ((options.system_end && connector.system_end)
+        || connector.measure_end) {
+      var stave1 = vfStaves[firstStave], stave2 = vfStaves[lastStave];
+      var dummy1 = new Vex.Flow.Stave(stave1.x + stave1.width,
+                                      stave1.y, 100);
+      var dummy2 = new Vex.Flow.Stave(stave2.x + stave2.width,
+                                      stave2.y, 100);
+      (new Vex.Flow.StaveConnector(dummy1, dummy2)
+          ).setType(type).setContext(context).draw();
+    }
+  });
 }
 
 Vex.Flow.DocumentFormatter.prototype.drawBlock = function(b, context) {
@@ -360,12 +370,8 @@ Vex.Flow.DocumentFormatter.prototype.drawBlock = function(b, context) {
     var stave = 0;
     while (this.getStave(m, stave)) stave++;
     this.drawMeasure(this.document.getMeasure(m), this.vfStaves[m], context,
-                     // Always connect start of individial stave
-                     // Connect end if this is the last measure
-                     1 | (2*Number(m == measures[measures.length - 1]))
-                     // Connect all measures (4) and draw braces (8)
-                     // if this is the first measure
-                     | (12*Number(m == measures[0])));
+                     {system_start: m == measures[0],
+                      system_end: m == measures[measures.length - 1]});
   }, this);
 }
 

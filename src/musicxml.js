@@ -8,6 +8,7 @@ if (! Vex.Flow.Backend) Vex.Flow.Backend = {};
 /** @constructor */
 Vex.Flow.Backend.MusicXML = function() {
   this.partList = new Array();
+  this.staveConnectors = new Array();
 
   // Create timewise array of arrays
   // Measures (zero-indexed) -> array of <measure> elements for each part
@@ -74,9 +75,9 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
 
   // Go through each part, pushing the measures on the correct sub-array
   var partNum = 0;
-  for (var i = 0; i < this.documentElement.childNodes.length; i++) {
-    var node = this.documentElement.childNodes[i];
-    if (node.nodeName == "part") {
+  Array.prototype.forEach.call(this.documentElement.childNodes, function(node){
+    if (node.nodeName == "part-list") this.parsePartList(node);
+    else if (node.nodeName == "part") {
       var measureNum = 0;
       for (var j = 0; j < node.childNodes.length; j++) {
         var measure = node.childNodes[j];
@@ -99,9 +100,60 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
         this.numStaves[partNum] = 1;
       partNum++;
     }
-  }
+  }, this);
+
+  // Create a brace for each part with multiple staves
+  var partNum = 0;
+  this.numStaves.forEach(function(staves) {
+    if (staves > 1) this.staveConnectors.push({
+      type: "brace", parts: [partNum], system_start: true});
+    partNum++;
+  }, this);
 
   this.valid = true;
+}
+
+Vex.Flow.Backend.MusicXML.prototype.parsePartList = function(partListElem) {
+  // We only care about stave connectors in part groups
+  var partNum = 0;
+  var partGroup = null;
+  var staveConnectors = null; // array of stave connectors for part group
+  Array.prototype.forEach.call(partListElem.childNodes, function(elem) {
+    switch (elem.nodeName) {
+      case "part-group":
+        if (elem.getAttribute("type") == "start") {
+          partGroup = [];
+          staveConnectors = [];
+          Array.prototype.forEach.call(elem.childNodes, function(groupElem) {
+            switch (groupElem.nodeName) {
+              case "group-symbol":
+                if (groupElem.textContent == "bracket"
+                    || groupElem.textContent == "brace")
+                  // Supported connectors
+                  staveConnectors.push({type: groupElem.textContent,
+                                        system_start: true});
+              case "group-barline":
+                if (groupElem.textContent == "yes")
+                  staveConnectors.push({type: "single", measure_start: true,
+                                        system_end: true});
+            }
+          });
+        }
+        else if (elem.getAttribute("type") == "stop") {
+          staveConnectors.forEach(function(connect) {
+            connect.parts = partGroup;
+            this.staveConnectors.push(connect);
+          }, this);
+          partGroup = staveConnectors = null;
+        }
+        break;
+      case "score-part":
+        if (partGroup) partGroup.push(partNum);
+        this.partList.push(partNum);
+        partNum++;
+        break;
+    }
+  }, this);
 }
 
 /**
@@ -183,6 +235,9 @@ Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
   }
   return measure;
 }
+
+Vex.Flow.Backend.MusicXML.prototype.getStaveConnectors =
+  function() { return this.staveConnectors; }
 
 Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
   function(measureNum, partNum, attributes) {
