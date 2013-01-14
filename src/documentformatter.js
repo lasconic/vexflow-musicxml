@@ -546,6 +546,9 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
   this.measureWidth = [];
   this.setWidth(width);
 
+  // Remove all non-canvas child nodes of elem using jQuery
+  $(elem).children(":not(canvas)").remove();
+
   var b = 0;
   while (this.getBlock(b)) {
     var canvas, context;
@@ -583,11 +586,23 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
     }
     context.scale(this.zoom, this.zoom);
     this.drawBlock(b, context);
+    // Add anchor elements before canvas
+    var lineAnchor = document.createElement("a");
+    lineAnchor.id = elem.id + "_line" + (b+1).toString();
+    elem.insertBefore(lineAnchor, canvas);
+    this.measuresInBlock[b].forEach(function(m) {
+      var anchor = elem.id + "_m" +
+                   this.document.getMeasureNumber(m).toString();
+      var anchorElem = document.createElement("a");
+      anchorElem.id = anchor;
+      elem.insertBefore(anchorElem, canvas);
+    }, this);
     b++;
   }
   while (typeof this.canvases[b] == "object") {
-    // Hide canvases beyond the ones being displayed
-    this.canvases[b].style.display = "none";
+    // Remove canvases beyond the last one we are using
+    elem.removeChild(this.canvases[b]);
+    delete this.canvases[b];
     b++;
   }
 }

@@ -32,6 +32,11 @@ Vex.Flow.Backend.IR.prototype.parse = function(object) {
   this.valid = true;
 }
 
+/**
+ * Returns true if the passed-in code parsed without errors.
+ *
+ * @return {Boolean} True if code is error-free.
+ */
 Vex.Flow.Backend.IR.prototype.isValid = function() { return this.valid; }
 
 /**
@@ -63,6 +68,11 @@ Vex.Flow.Backend.IR.prototype.getMeasure = function(i) {
   return new Vex.Flow.Measure(this.documentObject.measures[i]);
 }
 
+/**
+ * @return {Array} Stave connectors
+ * Each stave connector has a type, array of parts, and one or more true
+ * out of system_start, measure_start, and system_end.
+ */
 Vex.Flow.Backend.IR.prototype.getStaveConnectors = function() {
   if (typeof this.documentObject.getStaveConnectors == "function")
     return this.documentObject.getStaveConnectors();
@@ -128,16 +138,25 @@ Vex.Flow.Document.prototype.getNumberOfMeasures = function() {
 }
 
 /**
+ * @param {Number} Zero-indexed measure number
+ * @return {Number} Actual measure number (default: add 1 to argument)
+ */
+Vex.Flow.Document.prototype.getMeasureNumber = function(m) {
+  return (typeof this.backend.getMeasureNumber == "function")
+         ? this.backend.getMeasureNumber(m) : m + 1;
+}
+
+/**
  * Retrieve the ith measure (zero-indexed).
  * @param {Number} The zero-indexed measure to access.
  * @return {Vex.Flow.Measure} Measure object for corresponding measure
  */
-Vex.Flow.Document.prototype.getMeasure = function(i) {
-  if (i in this.measures) return this.measures[i];
-  var measure = this.backend.getMeasure(i);
+Vex.Flow.Document.prototype.getMeasure = function(m) {
+  if (m in this.measures) return this.measures[m];
+  var measure = this.backend.getMeasure(m);
   Vex.Assert(measure instanceof Vex.Flow.Measure,
              "Backend must return valid Vex.Flow.Measure");
-  this.measures[i] = measure;
+  this.measures[m] = measure;
   return measure;
 }
 

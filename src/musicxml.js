@@ -9,14 +9,14 @@ if (! Vex.Flow.Backend) Vex.Flow.Backend = {};
 Vex.Flow.Backend.MusicXML = function() {
   this.partList = new Array();
   this.staveConnectors = new Array();
-
   // Create timewise array of arrays
   // Measures (zero-indexed) -> array of <measure> elements for each part
   this.measures = new Array();
-
+  // Actual measure number for each measure
+  // (Usually starts at 1, or 0 for pickup measure and numbers consecutively)
+  this.measureNumbers = new Array();
   // Store number of staves for each part (zero-indexed)
   this.numStaves = new Array();
-
   // Track every child of any <attributes> element in array
   // (except <staves> which is stored in numStaves)
   // Measures -> parts ->
@@ -25,13 +25,6 @@ Vex.Flow.Backend.MusicXML = function() {
   this.attributes = new Array();
 }
 
-/**
- * Class method.
- * Returns true if the argument appears to be valid MusicXML.
- * Used when automatically detecting MusicXML.
- *
- * @return {Boolean} True if data looks like valid MusicXML.
- */
 Vex.Flow.Backend.MusicXML.appearsValid = function(data) {
   if (typeof data == "string") {
     return data.search(/<score-partwise/i) != -1;
@@ -40,13 +33,6 @@ Vex.Flow.Backend.MusicXML.appearsValid = function(data) {
          (data.documentElement.nodeName == 'score-partwise');
 }
 
-/**
- * Parse an XML string, or "parse" an existing DOM Document object.
- * If the parse fails, a Vex.RuntimeError is thrown.
- * Upon success, no exception is thrown and #isValid returns true.
- *
- * @param data The MusicXML data to parse.
- */
 Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
   if (typeof data == "string") {
     // Parse XML string
@@ -89,6 +75,10 @@ Vex.Flow.Backend.MusicXML.prototype.parse = function(data) {
           Vex.LogFatal("Part missing measure");
           this.valid = false;
           return;
+        }
+        if (! (measureNum in this.measureNumbers)) {
+          var num = parseInt(measure.getAttribute("number"));
+          if (! isNaN(num)) this.measureNumbers[measureNum] = num;
         }
         this.measures[measureNum][partNum] = measure;
         var attributes = measure.getElementsByTagName("attributes")[0];
@@ -156,27 +146,17 @@ Vex.Flow.Backend.MusicXML.prototype.parsePartList = function(partListElem) {
   }, this);
 }
 
-/**
- * Returns true if the passed-in code parsed without errors.
- *
- * @return {Boolean} True if code is error-free.
- */
 Vex.Flow.Backend.MusicXML.prototype.isValid = function() { return this.valid; }
 
-/**
- * Number of measures in the document
- *
- * @return {Number} Total number of measures
- */
 Vex.Flow.Backend.MusicXML.prototype.getNumberOfMeasures = function() {
   return this.measures.length;
 }
 
-/**
- * Create the mth measure from this.measures[m]
- *
- * @return {Vex.Flow.Measure} mth measure as a Measure object
- */
+Vex.Flow.Backend.MusicXML.prototype.getMeasureNumber = function(m) {
+  var num = this.measureNumbers[m];
+  return isNaN(num) ? null : num;
+}
+
 Vex.Flow.Backend.MusicXML.prototype.getMeasure = function(m) {
   var measure_attrs = this.getAttributes(m, 0);
   var time = measure_attrs.time;
