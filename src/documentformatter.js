@@ -326,7 +326,7 @@ Vex.Flow.DocumentFormatter.prototype.drawMeasure =
   this.document.getStaveConnectors().forEach(function(connector) {
     if (! ((options.system_start && connector.system_start)
         || (options.system_end && connector.system_end)
-        || connector.measure_start || connector.measure_end)) return;
+        || connector.measure_start)) return;
     var firstPart = connector.parts[0],
         lastPart = connector.parts[connector.parts.length - 1];
     var firstStave, lastStave;
@@ -350,8 +350,7 @@ Vex.Flow.DocumentFormatter.prototype.drawMeasure =
       (new Vex.Flow.StaveConnector(vfStaves[firstStave], vfStaves[lastStave])
           ).setType(type).setContext(context).draw();
     }
-    if ((options.system_end && connector.system_end)
-        || connector.measure_end) {
+    if (options.system_end && connector.system_end) {
       var stave1 = vfStaves[firstStave], stave2 = vfStaves[lastStave];
       var dummy1 = new Vex.Flow.Stave(stave1.x + stave1.width,
                                       stave1.y, 100);
@@ -538,17 +537,15 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
   }
   var canvasWidth = $(elem).width() - 10; // TODO: can we use jQuery?
   var width = Math.floor(canvasWidth / this.zoom) * this.scale;
-  if (typeof width == "number") {
-    if (width != this.width) {
-      // Invalidate all blocks/staves/voices
-      this.measuresInBlock = [];
-      this.blockDimensions = [];
-      this.vfStaves = [];
-      this.measureX = [];
-      this.measureWidth = [];
-    }
-    this.setWidth(width);
-  }
+  // Invalidate all blocks/staves/voices
+  this.minMeasureWidths = []; // heights don't change with stave modifiers
+  this.measuresInBlock = [];
+  this.blockDimensions = [];
+  this.vfStaves = [];
+  this.measureX = [];
+  this.measureWidth = [];
+  this.setWidth(width);
+
   var b = 0;
   while (this.getBlock(b)) {
     var canvas, context;
@@ -579,8 +576,9 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
       canvas = this.canvases[b];
       canvas.style.display = "inherit";
       canvas.width = width;
+      canvas.height = height;
       canvas.style.width = (width / this.scale).toString() + "px";
-      var context = canvas.getContext("2d");
+      context = canvas.getContext("2d");
       context.clearRect(0, 0, canvas.width, canvas.height);
     }
     context.scale(this.zoom, this.zoom);

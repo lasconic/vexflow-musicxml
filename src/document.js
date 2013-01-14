@@ -145,16 +145,19 @@ Vex.Flow.Document.prototype.getNumberOfParts = function() {
   return this.getMeasure(0).getNumberOfParts(); }
 
 /**
- * Connector options
-   @return {Array} array of objects with properties:
-      type (bracket, brace, single, etc), parts (array of part numbers),
-      system_start/system_end/measure_start/measure_end (true/false)
+ * Connector options from backend
+ * Single connectors are automatically added at the start of the system
+ * and for barlines within a single part.
+ * @return {Array} array of objects with properties:
+ *    type (bracket, brace, single, etc), parts (array of part numbers),
+ *    system_start/system_end/measure_start (true/false)
  */
 Vex.Flow.Document.prototype.getStaveConnectors = function() {
   if (typeof this.staveConnectors != "object") {
     this.staveConnectors = this.backend.getStaveConnectors().slice(0);
     var haveSingleSystemStart = false; // add if necessary
-    var lastPart = this.getNumberOfParts() - 1;
+    var numParts = this.getNumberOfParts();
+    var lastPart = numParts - 1;
     this.staveConnectors.forEach(function(connector) {
       if (connector.type == "single" && connector.parts[0] == 0
           && connector.parts[connector.parts.length - 1] == lastPart
@@ -164,6 +167,19 @@ Vex.Flow.Document.prototype.getStaveConnectors = function() {
     if (! haveSingleSystemStart)
       this.staveConnectors.push({
         type: "single", system_start: true, parts: [0, lastPart]});
+
+    // Add barlines to each part if necessary
+    var partsHaveBarlines = [];
+    this.staveConnectors.forEach(function(connector) {
+      if (connector.type == "single" && connector.parts.length == 1
+          && connector.measure_start && connector.system_end)
+        partsHaveBarlines[connector.parts[0]] = true;
+    });
+    for (var i = 0; i < numParts; i++)
+      if (! partsHaveBarlines[i])
+        this.staveConnectors.push({
+          type: "single", parts: [i], measure_start: true, system_end: true
+        });
   }
   return this.staveConnectors;
 }
