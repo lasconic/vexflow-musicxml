@@ -536,7 +536,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
     this.canvases = [];
   }
   var canvasWidth = $(elem).width() - 10; // TODO: can we use jQuery?
-  var width = Math.floor(canvasWidth / this.zoom) * this.scale;
+  var renderWidth = Math.floor(canvasWidth / this.zoom);
   // Invalidate all blocks/staves/voices
   this.minMeasureWidths = []; // heights don't change with stave modifiers
   this.measuresInBlock = [];
@@ -544,7 +544,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
   this.vfStaves = [];
   this.measureX = [];
   this.measureWidth = [];
-  this.setWidth(width);
+  this.setWidth(renderWidth);
 
   // Remove all non-canvas child nodes of elem using jQuery
   $(elem).children(":not(canvas)").remove();
@@ -557,11 +557,11 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
     var height = Math.ceil(dims[1] * this.zoom);
     if (! this.canvases[b]) {
       canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = width * this.scale;
+      canvas.height = height * this.scale;
       if (this.scale > 1) {
-        canvas.style.width = (width / this.scale).toString() + "px";
-        canvas.style.height = (height / this.scale).toString() + "px";
+        canvas.style.width = width.toString() + "px";
+        canvas.style.height = height.toString() + "px";
       }
       canvas.id = elem.id + "_canvas" + b.toString();
       // If a canvas exists after this one, insert before that canvas
@@ -578,13 +578,16 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
     else {
       canvas = this.canvases[b];
       canvas.style.display = "inherit";
-      canvas.width = width;
-      canvas.height = height;
-      canvas.style.width = (width / this.scale).toString() + "px";
+      canvas.width = width * this.scale;
+      canvas.height = height * this.scale;
+      if (this.scale > 1) {
+        canvas.style.width = width.toString() + "px";
+        canvas.style.height = height.toString() + "px";
+      }
       context = canvas.getContext("2d");
       context.clearRect(0, 0, canvas.width, canvas.height);
     }
-    context.scale(this.zoom, this.zoom);
+    context.scale(this.zoom * this.scale, this.zoom * this.scale);
     this.drawBlock(b, context);
     // Add anchor elements before canvas
     var lineAnchor = document.createElement("a");
