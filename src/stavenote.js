@@ -35,6 +35,7 @@ Vex.Flow.StaveNote.prototype.init = function(note_struct) {
         JSON.stringify(note_struct));
   }
 
+  this.dot_shiftY = 0;
   this.keyProps = [];             // per-note properties
 
   // Pull per-note location and other rendering properties.
@@ -160,7 +161,7 @@ Vex.Flow.StaveNote.prototype.getYForTopText = function(text_line) {
 Vex.Flow.StaveNote.prototype.getYForBottomText = function(text_line) {
   var extents = this.getStemExtents();
   return Vex.Max(this.stave.getYForTopText(text_line),
-      extents.baseY + (this.render_options.annotation_spacing * (text_line + 1)));
+      extents.baseY + (this.render_options.annotation_spacing * (text_line)));
 }
 
 Vex.Flow.StaveNote.prototype.setStave = function(stave) {
@@ -175,6 +176,12 @@ Vex.Flow.StaveNote.prototype.setStave = function(stave) {
   }
 
   return this.setYs(ys);
+}
+
+// Get individual note/octave pairs for all notes in this
+// chord.
+Vex.Flow.StaveNote.prototype.getKeys = function() {
+  return this.keys;
 }
 
 // Get the Key Properties for each note in chord
@@ -215,8 +222,8 @@ Vex.Flow.StaveNote.prototype.getStemExtents = function() {
     }
 
     if(this.noteType == "s" || this.noteType == 'x') {
-      top_pixel += 8;
-      base_pixel += 8;
+      top_pixel -= this.stem_direction * 7;
+      base_pixel -= this.stem_direction * 7;
     }
   }
 
@@ -234,6 +241,18 @@ Vex.Flow.StaveNote.prototype.getTieLeftX = function() {
   var tieEndX = this.getAbsoluteX();
   tieEndX += this.x_shift - this.extraLeftPx;
   return tieEndX;
+}
+
+Vex.Flow.StaveNote.prototype.getLineForRest = function() {
+  var rest_line = this.keyProps[0].line;
+  if (this.keyProps.length > 1) {
+    var last_line  = this.keyProps[this.keyProps.length - 1].line;
+    var top = Vex.Max(rest_line, last_line);
+    var bot = Vex.Min(rest_line, last_line);
+    rest_line = Vex.MidLine(top, bot)
+  }
+
+  return rest_line;
 }
 
 Vex.Flow.StaveNote.prototype.getModifierStartXY = function(position, index) {
@@ -329,6 +348,7 @@ Vex.Flow.StaveNote.prototype.addDot = function(index) {
   var dot = new Vex.Flow.Dot();
   dot.setNote(this);
   dot.setIndex(index);
+  dot.setDotShiftY(this.glyph.dot_shiftY);
   this.modifiers.push(dot);
   this.setPreFormatted(false);
   this.dots++;
@@ -444,7 +464,10 @@ Vex.Flow.StaveNote.prototype.draw = function() {
     ctx.closePath();
 
     // only fill if quarter note or smaller
-    if (stavenote.duration != 1 && stavenote.duration != 2) {
+    if (stavenote.duration != 1 &&
+        stavenote.duration != 2 &&
+        stavenote.duration != "h" &&
+        stavenote.duration != "w") {
       ctx.fill();
     } else {
       ctx.stroke();
@@ -498,7 +521,7 @@ Vex.Flow.StaveNote.prototype.draw = function() {
       // if a slash note, draw 'manually' as font glyphs do not slant enough
       // and are too small.
       if (this.noteType == "s") {
-        drawSlashNoteHead(this, ctx, head_x, y);
+        drawSlashNoteHead(this, ctx, head_x + (this.stem_direction == 1 ? 1:0), y);
       } else {
         Vex.Flow.renderGlyph(ctx, head_x,
             y, this.render_options.glyph_font_scale, code_head);

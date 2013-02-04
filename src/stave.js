@@ -32,7 +32,7 @@ Vex.Flow.Stave.prototype.init = function(x, y, width, options) {
     space_above_staff_ln: 4,      // in staff lines
     space_below_staff_ln: 4,      // in staff lines
     top_text_position: 1,         // in staff lines
-    bottom_text_position: 7       // in staff lines
+    bottom_text_position: 6       // in staff lines
   };
   this.bounds = {x: this.x, y: this.y, w: this.width, h: 0};
   Vex.Merge(this.options, options);
@@ -70,6 +70,8 @@ Vex.Flow.Stave.prototype.getTieEndX = function() {
   return this.x + this.width; }
 Vex.Flow.Stave.prototype.setContext = function(context) {
   this.context = context; return this; }
+Vex.Flow.Stave.prototype.getContext = function() {
+  return this.context; }
 Vex.Flow.Stave.prototype.getX = function() {
   return this.x;
 }

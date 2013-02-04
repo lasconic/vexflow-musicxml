@@ -267,7 +267,7 @@ Vex.Flow.Beam.prototype.draw = function(notes) {
 }
 
 
-Vex.Flow.Beam.applyAndGetBeams = function(voice) {
+Vex.Flow.Beam.applyAndGetBeams = function(voice, stem_direction) {
   var unprocessedNotes = voice.tickables;
   var ticksPerGroup    = 4096;
   var noteGroups       = [];
@@ -284,7 +284,11 @@ Vex.Flow.Beam.applyAndGetBeams = function(voice) {
 
     unprocessedNotes.forEach(function(unprocessedNote){
       nextGroup    = [];
-      if (unprocessedNote.shouldIgnoreTicks()) return; // Ignore untickables (like bar notes)
+      if (unprocessedNote.shouldIgnoreTicks()) {
+        noteGroups.push(currentGroup);
+        currentGroup = nextGroup;
+        return; // Ignore untickables (like bar notes)
+      }
 
       currentGroup.push(unprocessedNote);
 
@@ -306,7 +310,16 @@ Vex.Flow.Beam.applyAndGetBeams = function(voice) {
 
   function getBeamGroups() {
     return noteGroups.filter(function(group){
-        return group.length > 1;
+        if (group.length > 1) {
+          var beamable = true;
+          group.forEach(function(note) {
+            if (note.getIntrinsicTicks() >= Vex.Flow.durationToTicks("4")) {
+              beamable = false;
+            }
+          });
+          return beamable;
+        }
+        return false;
     });
   }
 
@@ -319,6 +332,8 @@ Vex.Flow.Beam.applyAndGetBeams = function(voice) {
   }
 
   function determineStemDirection(group) {
+    if (stem_direction) return stem_direction;
+
     var lineSum = 0;
 
     group.forEach(function(note) {
