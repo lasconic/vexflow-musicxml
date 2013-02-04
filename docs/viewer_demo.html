@@ -65,7 +65,14 @@
         var elapsed = (new Date().getTime() - start)/1000;
         if (typeof console != "undefined" && typeof console.log == "function")
           console.log("Time to display document: " + elapsed.toString());
-        $(window).resize(function() { VexFormatter.draw(content); });
+        var debouncedResize = null;
+        $(window).resize(function() {
+          if (! debouncedResize)
+            debouncedResize = setTimeout(function() {
+              VexFormatter.draw(content);
+              debouncedResize = null;
+            }, 500);
+        });
       };
       req.send(null);
     });
