@@ -144,6 +144,7 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
                                   beat_value: voice.time.beat_value,
                                   resolution: Vex.Flow.RESOLUTION});
+  vfVoice.setMode(Vex.Flow.Voice.Mode.SOFT);
   // TODO: support spanning multiple staves
   if (typeof voice.stave != "number")
     throw new Vex.RERR("InvalidIRError", "Voice should have stave property");
