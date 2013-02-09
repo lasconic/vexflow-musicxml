@@ -144,7 +144,7 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
                                   beat_value: voice.time.beat_value,
                                   resolution: Vex.Flow.RESOLUTION});
-  vfVoice.setMode(Vex.Flow.Voice.Mode.SOFT);
+  if (voice.time.soft) vfVoice.setMode(Vex.Flow.Voice.Mode.SOFT);
   // TODO: support spanning multiple staves
   if (typeof voice.stave != "number")
     throw new Vex.RERR("InvalidIRError", "Voice should have stave property");
@@ -430,7 +430,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.getBlock = function(b) {
     if (startMeasure == 0 && ! s.getModifier("time")) {
       if (typeof s.time_signature == "string")
         s.addModifier({type: "time", time: s.time_signature,automatic:true});
-      else if (typeof s.time == "object")
+      else if (typeof s.time == "object" && ! s.time.soft)
         s.addModifier(Vex.Merge({type: "time", automatic: true}, s.time));
     }
   });

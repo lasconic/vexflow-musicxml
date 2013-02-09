@@ -236,7 +236,9 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
                                                  "fifths")[0].textContent));
         break;
       case "time":
-        attrObject = {
+        attrObject = (attr.getElementsByTagName("senza-misura").length > 0)
+                   ? {num_beats: 4, beat_value: 4, soft: true}
+                   : {
           num_beats: parseInt(attr.getElementsByTagName("beats")[0]
                                       .textContent),
           beat_value: parseInt(attr.getElementsByTagName(
@@ -426,6 +428,10 @@ Vex.Flow.Backend.MusicXML.prototype.getAttributes = function(m, p) {
       else attrs[key] = val;
     }
   }
+
+  // Default attributes
+  if (! attrs.time) attrs.time = {num_beats: 4, beat_value: 4, soft: true};
+
   return attrs;
 }
 
