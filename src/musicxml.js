@@ -242,7 +242,8 @@ Vex.Flow.Backend.MusicXML.prototype.parseAttributes =
           num_beats: parseInt(attr.getElementsByTagName("beats")[0]
                                       .textContent),
           beat_value: parseInt(attr.getElementsByTagName(
-                                          "beat-type")[0].textContent)
+                                          "beat-type")[0].textContent),
+          soft: true // XXX: Should we always have soft voices?
         };
         break;
       case "clef":
