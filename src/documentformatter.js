@@ -138,7 +138,7 @@ Vex.Flow.DocumentFormatter.prototype.getStave = function(m, s) {
  * (spanning multiple staves in a single voice not currently supported.)
  * @param {Vex.Flow.Measure.Voice} Voice object
  * @param {Array} Vex.Flow.Staves to add the notes to
- * @return {Array} Vex.Flow.Voice and array of objects to be drawn
+ * @return {Array} Vex.Flow.Voice, objects to be drawn, optional voice w/lyrics
  */
 Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   var vfVoice = new Vex.Flow.Voice({num_beats: voice.time.num_beats,
@@ -155,6 +155,7 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
   var tiedNote = null; // only last vFNote in tie
   var tupletNotes = null, tupletOpts = null;
   var clef = staves[voice.stave].clef;
+  var lyricVoice = null;
   for (var i = 0; i < voice.notes.length; i++) {
     var note = voice.notes[i];
     var vfNote = this.getVexflowNote(voice.notes[i], {clef: clef});
@@ -185,10 +186,27 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
       }
     }
     else vfVoice.addTickable(vfNote);
+    if (note.lyric) {
+      if (! lyricVoice) {
+        lyricVoice = new Vex.Flow.Voice(vfVoice.time);
+        if (voice.time.soft) lyricVoice.setMode(Vex.Flow.Voice.Mode.SOFT);
+        lyricVoice.setStave(vfVoice.stave);
+        // TODO: add padding at start of voice if necessary
+      }
+      lyricVoice.addTickable(new Vex.Flow.TextNote({
+        text: note.lyric.text, duration: note.duration
+      }));
+    }
+    else if (lyricVoice) {
+      // Add GhostNote for padding lyric voice
+      lyricVoice.addTickable(new Vex.Flow.GhostNote({
+        duration: note.duration
+      }));
+    }
   }
   Vex.Assert(vfVoice.stave instanceof Vex.Flow.Stave,
              "VexFlow voice should have a stave");
-  return [vfVoice, vexflowObjects];
+  return [vfVoice, vexflowObjects, lyricVoice];
 }
 
 /**
@@ -226,13 +244,22 @@ Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
       return vfStave;
     }, this);
 
+    // Create dummy canvas to use for formatting (required by TextNote)
+    var canvas = document.createElement("canvas");
+    var context = canvas.getContext("2d");
+
     var allVfVoices = [];
     var startStave = 0; // stave for part to start on
     measure.getParts().forEach(function(part) {
       var numStaves = part.getNumberOfStaves();
       var partStaves = vfStaves.slice(startStave, startStave + numStaves);
       part.getVoices().forEach(function(voice) {
-        allVfVoices.push(this.getVexflowVoice(voice, partStaves)[0]); }, this);
+        var vfVoice = this.getVexflowVoice(voice, partStaves)[0];
+        allVfVoices.push(vfVoice);
+        vfVoice.tickables.forEach(function(t) {
+          t.setContext(context)
+        });
+      }, this);
       startStave += numStaves;
     }, this);
     var formatter = new Vex.Flow.Formatter();
@@ -294,13 +321,20 @@ Vex.Flow.DocumentFormatter.prototype.drawPart =
   vfStaves.forEach(function(stave) { stave.setContext(context).draw(); });
 
   var allVfObjects = new Array();
-  var vfVoices = voices.map(function(voice) {
+  var vfVoices = new Array();
+  voices.forEach(function(voice) {
     var result = this.getVexflowVoice(voice, vfStaves);
     Array.prototype.push.apply(allVfObjects, result[1]);
     var vfVoice = result[0];
+    var lyricVoice = result[2];
     vfVoice.tickables.forEach(function(tickable) {
       tickable.setStave(vfVoice.stave); });
-    return vfVoice;
+    vfVoices.push(vfVoice);
+    if (lyricVoice) {
+      lyricVoice.tickables.forEach(function(tickable) {
+        tickable.setStave(lyricVoice.stave); });
+      vfVoices.push(lyricVoice);
+    }
   }, this);
   var formatter = new Vex.Flow.Formatter().joinVoices(vfVoices);
   formatter.format(vfVoices, vfStaves[0].getNoteEndX()
@@ -588,6 +622,9 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
       context = canvas.getContext("2d");
       context.clearRect(0, 0, canvas.width, canvas.height);
     }
+    // TODO: Figure out why setFont method is called
+    if (typeof context.setFont != "function")
+      context.setFont = function(font) { this.font = font; return this; };
     context.scale(this.zoom * this.scale, this.zoom * this.scale);
     this.drawBlock(b, context);
     // Add anchor elements before canvas

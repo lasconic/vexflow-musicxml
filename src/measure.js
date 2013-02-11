@@ -433,6 +433,9 @@ Vex.Flow.Measure.Note = function(object) {
             ? object.beam : null;
   this.tie = (typeof object.tie == "string")
            ? object.tie : null;
+  this.lyric = (typeof object.lyric == "object" && object.lyric)
+             ? {text: object.lyric.text}
+             : null;
 
   this.type = "note";
 }

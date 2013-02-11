@@ -369,6 +369,11 @@ Vex.Flow.Backend.MusicXML.prototype.parseNote = function(noteElem, attrs) {
         //       partial beam between groups of notes where needed
         if (noteObj.beam != "continue") noteObj.beam = beam;
         break;
+      case "lyric":
+        var text = elem.getElementsByTagName("text")[0];
+        if (text) text = text.textContent;
+        if (text) noteObj.lyric = {text: text};
+        break;
       case "notations":
         Array.prototype.forEach.call(elem.childNodes, function(notationElem) {
           switch (notationElem.nodeName) {
