@@ -62,6 +62,17 @@ Vex.Flow.Test.StaveNote.Start = function() {
   Vex.Flow.Test.runTest("StaveNote Draw - Bass", Vex.Flow.Test.StaveNote.drawBass);
   Vex.Flow.Test.runRaphaelTest("StaveNote Draw - Bass(Raphael)",
       Vex.Flow.Test.StaveNote.drawBass);
+
+  Vex.Flow.Test.runTest("StaveNote Draw - Key Styles",
+      Vex.Flow.Test.StaveNote.drawKeyStyles);
+  Vex.Flow.Test.runRaphaelTest("StaveNote Draw - Key Styles (Raphael)",
+      Vex.Flow.Test.StaveNote.drawKeyStyles);
+
+  Vex.Flow.Test.runTest("Flag and Dot Placement - Stem Up", Vex.Flow.Test.StaveNote.dotsAndFlagsStemUp);
+  Vex.Flow.Test.runTest("Flag and Dots Placement - Stem Down", Vex.Flow.Test.StaveNote.dotsAndFlagsStemDown);
+  
+  Vex.Flow.Test.runTest("Beam and Dot Placement - Stem Up", Vex.Flow.Test.StaveNote.dotsAndBeamsUp);
+  Vex.Flow.Test.runTest("Beam and Dot Placement - Stem Down", Vex.Flow.Test.StaveNote.dotsAndBeamsDown);
 }
 
 Vex.Flow.Test.StaveNote.ticks = function(options) {
@@ -330,8 +341,8 @@ Vex.Flow.Test.StaveNote.autoStem = function() {
 
   note = new Vex.Flow.StaveNote(
       { keys: ["a/4", "e/5", "g/5"], duration: "8", auto_stem: true});
-  equal(note.getStemDirection(), Vex.Flow.StaveNote.STEM_UP,
-      "Stem must be up");
+  equal(note.getStemDirection(), Vex.Flow.StaveNote.STEM_DOWN,
+      "Stem must be down");
 
   note = new Vex.Flow.StaveNote(
       { keys: ["b/4"], duration: "8", auto_stem: true});
@@ -380,7 +391,7 @@ Vex.Flow.Test.StaveNote.tickContext = function() {
   tickContext.setX(10);
   tickContext.setPadding(0);
 
-  equal(tickContext.getWidth(), 16.5);
+  equal(tickContext.getWidth(), 16);
 }
 
 Vex.Flow.Test.StaveNote.showNote = function(note_struct, stave, ctx, x, drawBoundingBox) {
@@ -402,7 +413,7 @@ Vex.Flow.Test.StaveNote.draw = function(options, contextBuilder) {
   var restKey = options.params.restKey;
 
   var ctx = new contextBuilder(options.canvas_sel, 700, 180);
-  var stave = new Vex.Flow.Stave(10, 10, 650);
+  var stave = new Vex.Flow.Stave(10, 30, 750);
 
   stave.setContext(ctx);
   stave.addClef(clef);
@@ -426,6 +437,7 @@ Vex.Flow.Test.StaveNote.draw = function(options, contextBuilder) {
     { clef: clef, keys: lowerKeys, duration: "16"},
     { clef: clef, keys: higherKeys, duration: "32"},
     { clef: clef, keys: higherKeys, duration: "64"},
+    { clef: clef, keys: higherKeys, duration: "128"},
     { clef: clef, keys: lowerKeys, duration: "w",
       stem_direction: -1},
     { clef: clef, keys: lowerKeys, duration: "h",
@@ -440,6 +452,8 @@ Vex.Flow.Test.StaveNote.draw = function(options, contextBuilder) {
       stem_direction: -1},
     { clef: clef, keys: lowerKeys, duration: "64",
       stem_direction: -1},
+    { clef: clef, keys: lowerKeys, duration: "128",
+      stem_direction: -1},
 
     { clef: clef, keys: restKeys, duration: "wr"},
     { clef: clef, keys: restKeys, duration: "hr"},
@@ -448,6 +462,7 @@ Vex.Flow.Test.StaveNote.draw = function(options, contextBuilder) {
     { clef: clef, keys: restKeys, duration: "16r"},
     { clef: clef, keys: restKeys, duration: "32r"},
     { clef: clef, keys: restKeys, duration: "64r"},
+    { clef: clef, keys: restKeys, duration: "128r"},
     { keys: ["x/4"], duration: "h"}
   ];
   expect(notes.length * 2);
@@ -467,7 +482,7 @@ Vex.Flow.Test.StaveNote.drawBoundingBoxes = function(options, contextBuilder) {
   var restKey = options.params.restKey;
 
   var ctx = new contextBuilder(options.canvas_sel, 700, 180);
-  var stave = new Vex.Flow.Stave(10, 10, 650);
+  var stave = new Vex.Flow.Stave(10, 30, 750);
 
   stave.setContext(ctx);
   stave.addClef(clef);
@@ -491,6 +506,7 @@ Vex.Flow.Test.StaveNote.drawBoundingBoxes = function(options, contextBuilder) {
     { clef: clef, keys: lowerKeys, duration: "16"},
     { clef: clef, keys: higherKeys, duration: "32"},
     { clef: clef, keys: higherKeys, duration: "64"},
+    { clef: clef, keys: higherKeys, duration: "128"},
     { clef: clef, keys: lowerKeys, duration: "w",
       stem_direction: -1},
     { clef: clef, keys: lowerKeys, duration: "h",
@@ -505,6 +521,7 @@ Vex.Flow.Test.StaveNote.drawBoundingBoxes = function(options, contextBuilder) {
       stem_direction: -1},
     { clef: clef, keys: lowerKeys, duration: "64",
       stem_direction: -1},
+    { clef: clef, keys: lowerKeys, duration: "128"},
 
     { clef: clef, keys: restKeys, duration: "wr"},
     { clef: clef, keys: restKeys, duration: "hr"},
@@ -513,6 +530,7 @@ Vex.Flow.Test.StaveNote.drawBoundingBoxes = function(options, contextBuilder) {
     { clef: clef, keys: restKeys, duration: "16r"},
     { clef: clef, keys: restKeys, duration: "32r"},
     { clef: clef, keys: restKeys, duration: "64r"},
+    { clef: clef, keys: restKeys, duration: "128r"},
     { keys: ["x/4"], duration: "h"}
   ];
   expect(notes.length * 2);
@@ -529,8 +547,8 @@ Vex.Flow.Test.StaveNote.drawBoundingBoxes = function(options, contextBuilder) {
 Vex.Flow.Test.StaveNote.drawBass = function(options, contextBuilder) {
   expect(36);
   var ctx = new contextBuilder(options.canvas_sel, 600, 280);
-  var stave = new Vex.Flow.Stave(10, 10, 550);
-  var stave2 = new Vex.Flow.Stave(10, 150, 550);
+  var stave = new Vex.Flow.Stave(10, 10, 650);
+  var stave2 = new Vex.Flow.Stave(10, 150, 650);
   stave.setContext(ctx);
   stave.addClef('bass');
   stave.draw();
@@ -621,6 +639,7 @@ Vex.Flow.Test.StaveNote.drawHarmonicAndMuted = function(options,
     { keys: ["c/4", "e/4", "a/4"], duration: "16h"},
     { keys: ["c/4", "e/4", "a/4"], duration: "32h"},
     { keys: ["c/4", "e/4", "a/4"], duration: "64h"},
+    { keys: ["c/4", "e/4", "a/4"], duration: "128h"},
     { keys: ["c/4", "e/4", "a/4"], duration: "wh", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "hh", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "qh", stem_direction: -1},
@@ -628,6 +647,7 @@ Vex.Flow.Test.StaveNote.drawHarmonicAndMuted = function(options,
     { keys: ["c/4", "e/4", "a/4"], duration: "16h", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "32h", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "64h", stem_direction: -1},
+    { keys: ["c/4", "e/4", "a/4"], duration: "128h", stem_direction: -1},
 
     { keys: ["c/4", "e/4", "a/4"], duration: "wm"},
     { keys: ["c/4", "e/4", "a/4"], duration: "hm"},
@@ -636,13 +656,15 @@ Vex.Flow.Test.StaveNote.drawHarmonicAndMuted = function(options,
     { keys: ["c/4", "e/4", "a/4"], duration: "16m"},
     { keys: ["c/4", "e/4", "a/4"], duration: "32m"},
     { keys: ["c/4", "e/4", "a/4"], duration: "64m"},
+    { keys: ["c/4", "e/4", "a/4"], duration: "128m"},
     { keys: ["c/4", "e/4", "a/4"], duration: "wm", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "hm", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "qm", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "8m", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "16m", stem_direction: -1},
     { keys: ["c/4", "e/4", "a/4"], duration: "32m", stem_direction: -1},
-    { keys: ["c/4", "e/4", "a/4"], duration: "64m", stem_direction: -1}
+    { keys: ["c/4", "e/4", "a/4"], duration: "64m", stem_direction: -1},
+    { keys: ["c/4", "e/4", "a/4"], duration: "128m", stem_direction: -1}
   ];
   expect(notes.length * 2);
 
@@ -669,15 +691,335 @@ Vex.Flow.Test.StaveNote.drawSlash = function(options, contextBuilder) {
     { keys: ["b/4"], duration: "8s", stem_direction: -1},
     { keys: ["b/4"], duration: "16s", stem_direction: -1},
     { keys: ["b/4"], duration: "32s", stem_direction: -1},
-    { keys: ["b/4"], duration: "64s", stem_direction: -1}
+    { keys: ["b/4"], duration: "64s", stem_direction: -1},
+    { keys: ["b/4"], duration: "128s", stem_direction: -1},
+
+    { keys: ["b/4"], duration: "ws", stem_direction: 1},
+    { keys: ["b/4"], duration: "hs", stem_direction: 1},
+    { keys: ["b/4"], duration: "qs", stem_direction: 1},
+    { keys: ["b/4"], duration: "8s", stem_direction: 1},
+    { keys: ["b/4"], duration: "16s", stem_direction: 1},
+    { keys: ["b/4"], duration: "32s", stem_direction: 1},
+    { keys: ["b/4"], duration: "64s", stem_direction: 1},
+    { keys: ["b/4"], duration: "128s", stem_direction: 1},
+
+    // Beam
+    { keys: ["b/4"], duration: "8s", stem_direction: -1},
+    { keys: ["b/4"], duration: "8s", stem_direction: -1},
+    { keys: ["b/4"], duration: "8s", stem_direction: 1},
+    { keys: ["b/4"], duration: "8s", stem_direction: 1}
   ];
-  expect(notes.length * 2);
+
+  var stave_notes = notes.map(function(note) {return new Vex.Flow.StaveNote(note)});
+  var beam1 = new Vex.Flow.Beam([stave_notes[16], stave_notes[17]]);
+  var beam2 = new Vex.Flow.Beam([stave_notes[18], stave_notes[19]]);
+
+  Vex.Flow.Formatter.FormatAndDraw(ctx, stave, stave_notes, false);
+
+  beam1.setContext(ctx).draw();
+  beam2.setContext(ctx).draw();
+
+  ok("Slash Note Heads");
+}
+
+Vex.Flow.Test.StaveNote.drawKeyStyles = function(options, contextBuilder) {
+  var ctx = new contextBuilder(options.canvas_sel, 300, 280);
+  var stave = new Vex.Flow.Stave(10, 0, 100);
+  ctx.scale(3, 3);
+  stave.setContext(ctx);
+  stave.draw();
+
+  var note_struct = { keys: ["g/4","b/4","d/5"], duration: "q" };
+  var note = new Vex.Flow.StaveNote(note_struct);
+  note.setKeyStyle(1, {shadowBlur:15, shadowColor:'blue', fillStyle:'blue'});
+
+  var tickContext = new Vex.Flow.TickContext();
+  tickContext.addTickable(note).preFormat().setX(25).setPixelsUsed(20);
+  note.setContext(ctx).setStave(stave);
+  note.draw();
+
+  ok(note.getX() > 0, "Note has X value");
+  ok(note.getYs().length > 0, "Note has Y values");
+}
+
+Vex.Flow.Test.StaveNote.renderNote = function(note, stave, ctx, x) {
+  var mc = new Vex.Flow.ModifierContext();
+  note.addToModifierContext(mc);
+
+  var tickContext = new Vex.Flow.TickContext();
+  tickContext.addTickable(note).preFormat().setX(x).setPixelsUsed(65);
+
+  note.setContext(ctx).setStave(stave);
+  note.draw();
+
+  ctx.save();
+  return note;
+}
+
+Vex.Flow.Test.StaveNote.dotsAndFlagsStemUp = function(options, contextBuilder) {
+  var ctx = new contextBuilder(options.canvas_sel, 800, 150);
+  ctx.scale(1.0, 1.0); ctx.setFillStyle("#221"); ctx.setStrokeStyle("#221");
+  var stave = new Vex.Flow.Stave(10, 10, 975);
+  stave.setContext(ctx);
+  stave.draw();
+
+  function newNote(note_struct) { return new Vex.Flow.StaveNote(note_struct); }
+  function newAcc(type) { return new Vex.Flow.Dot(type); }
+
+  var notes = [
+    newNote({ keys: ["f/4"],
+        duration: "4", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "8", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "16", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "32", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "64", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "128", stem_direction: 1}).
+      addDotToAll().
+      addDotToAll(),
+
+
+    newNote({ keys: ["g/4"],
+        duration: "4", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "8", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "16", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "32"}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "64", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "128", stem_direction: 1}).
+      addDotToAll().
+      addDotToAll()
+  ];
 
   for (var i = 0; i < notes.length; ++i) {
-    var note = notes[i];
-    var staveNote = showNote(note, stave, ctx, (i + 1) * 25);
-
-    ok(staveNote.getX() > 0, "Note " + i + " has X value");
-    ok(staveNote.getYs().length > 0, "Note " + i + " has Y values");
+    Vex.Flow.Test.StaveNote.renderNote(notes[i], stave, ctx, (i * 65));
   }
+
+  ok(true, "Full Dot");
+}
+
+
+Vex.Flow.Test.StaveNote.dotsAndFlagsStemDown = function(options, contextBuilder) {
+  var ctx = new contextBuilder(options.canvas_sel, 800, 160);
+  ctx.scale(1.0, 1.0); ctx.setFillStyle("#221"); ctx.setStrokeStyle("#221");
+  var stave = new Vex.Flow.Stave(10, 10, 975);
+  stave.setContext(ctx);
+  stave.draw();
+
+  function newNote(note_struct) { return new Vex.Flow.StaveNote(note_struct); }
+  function newAcc(type) { return new Vex.Flow.Dot(type); }
+
+  var notes = [
+    newNote({ keys: ["e/5"],
+        duration: "4", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "8", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "16", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "32", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "64", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "128", stem_direction: -1}).
+      addDotToAll(),
+
+
+    newNote({ keys: ["d/5"],
+        duration: "4", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "8", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "16", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "32",  stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "64", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "128", stem_direction: -1}).
+      addDotToAll()
+  ];
+
+  for (var i = 0; i < notes.length; ++i) {
+    Vex.Flow.Test.StaveNote.renderNote(notes[i], stave, ctx, (i * 65));
+  }
+
+  ok(true, "Full Dot");
+}
+Vex.Flow.Test.StaveNote.dotsAndBeamsDown = function(options, contextBuilder) {
+  var ctx = new contextBuilder(options.canvas_sel, 800, 150);
+  ctx.scale(1.0, 1.0); ctx.setFillStyle("#221"); ctx.setStrokeStyle("#221");
+  var stave = new Vex.Flow.Stave(10, 10, 975);
+  stave.setContext(ctx);
+  stave.draw();
+
+  function newNote(note_struct) { return new Vex.Flow.StaveNote(note_struct); }
+  function newAcc(type) { return new Vex.Flow.Dot(type); }
+
+  var notes = [
+    newNote({ keys: ["f/4"],
+        duration: "8", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "16", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "32", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "64", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["f/4"],
+        duration: "128", stem_direction: 1}).
+      addDotToAll().
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "8", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "16", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "32"}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "64", stem_direction: 1}).
+      addDotToAll(),
+
+    newNote({ keys: ["g/4"],
+        duration: "128", stem_direction: 1}).
+      addDotToAll().
+      addDotToAll()
+  ];
+
+  var beam = new Vex.Flow.Beam(notes);
+
+  for (var i = 0; i < notes.length; ++i) {
+    Vex.Flow.Test.StaveNote.renderNote(notes[i], stave, ctx, (i * 65));
+  }
+
+  beam.setContext(ctx).draw();
+  ok(true, "Full Dot");
+}
+
+
+
+Vex.Flow.Test.StaveNote.dotsAndBeamsUp = function(options, contextBuilder) {
+  var ctx = new contextBuilder(options.canvas_sel, 800, 160);
+  ctx.scale(1.0, 1.0); ctx.setFillStyle("#221"); ctx.setStrokeStyle("#221");
+  var stave = new Vex.Flow.Stave(10, 10, 975);
+  stave.setContext(ctx);
+  stave.draw();
+
+  function newNote(note_struct) { return new Vex.Flow.StaveNote(note_struct); }
+  function newAcc(type) { return new Vex.Flow.Dot(type); }
+
+  var notes = [
+
+    newNote({ keys: ["e/5"],
+        duration: "8", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "16", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "32", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "64", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["e/5"],
+        duration: "128", stem_direction: -1}).
+      addDotToAll(),
+
+
+    newNote({ keys: ["d/5"],
+        duration: "8", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "16", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "32",  stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "64", stem_direction: -1}).
+      addDotToAll(),
+
+    newNote({ keys: ["d/5"],
+        duration: "128", stem_direction: -1}).
+      addDotToAll()
+  ];
+
+  var beam = new Vex.Flow.Beam(notes);
+
+  for (var i = 0; i < notes.length; ++i) {
+    Vex.Flow.Test.StaveNote.renderNote(notes[i], stave, ctx, (i * 65));
+  }
+  beam.setContext(ctx).draw();
+
+  ok(true, "Full Dot");
 }

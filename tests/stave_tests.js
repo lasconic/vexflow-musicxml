@@ -38,6 +38,14 @@ Vex.Flow.Test.Stave.Start = function() {
       Vex.Flow.Test.Stave.configureAllLines);
   Vex.Flow.Test.runRaphaelTest("Batch Line Configuration Test (Raphael)",
       Vex.Flow.Test.Stave.configureAllLines);
+  Vex.Flow.Test.runTest("Stave Text Test (Canvas)",
+      Vex.Flow.Test.Stave.drawStaveText);
+  Vex.Flow.Test.runRaphaelTest("Stave Text Test (Raphael)",
+      Vex.Flow.Test.Stave.drawStaveText);
+  Vex.Flow.Test.runTest("Multiple Line Stave Text Test (Raphael)",
+      Vex.Flow.Test.Stave.drawStaveTextMultiLine);
+  Vex.Flow.Test.runRaphaelTest("Multiple Line Stave Text Test (Raphael)",
+      Vex.Flow.Test.Stave.drawStaveTextMultiLine);
 }
 
 Vex.Flow.Test.Stave.draw = function(options, contextBuilder) {
@@ -48,9 +56,9 @@ Vex.Flow.Test.Stave.draw = function(options, contextBuilder) {
   stave.getBoundingBox().draw(ctx);
 
   equal(stave.getYForNote(0), 100, "getYForNote(0)");
-  equal(stave.getYForLine(5), 100, "getYForLine(5)");
-  equal(stave.getYForLine(0), 50, "getYForLine(0) - Top Line");
-  equal(stave.getYForLine(4), 90, "getYForLine(4) - Bottom Line");
+  equal(stave.getYForLine(5), 99, "getYForLine(5)");
+  equal(stave.getYForLine(0), 49, "getYForLine(0) - Top Line");
+  equal(stave.getYForLine(4), 89, "getYForLine(4) - Bottom Line");
 
   ok(true, "all pass");
 }
@@ -127,7 +135,7 @@ Vex.Flow.Test.Stave.drawRepeats = function(options, contextBuilder) {
   expect(0);
 
   // Get the rendering context
-  var ctx = contextBuilder(options.canvas_sel, 550, 120);
+  var ctx = contextBuilder(options.canvas_sel, 750, 120);
 
   // bar 1
   var staveBar1 = new Vex.Flow.Stave(10, 0, 250);
@@ -181,6 +189,32 @@ Vex.Flow.Test.Stave.drawRepeats = function(options, contextBuilder) {
   // Render beams
   beam1.setContext(ctx).draw();
   beam2.setContext(ctx).draw();
+  
+  // bar 3 - juxtaposing third bar next to second bar
+  var staveBar3 = new Vex.Flow.Stave(staveBar2.width + staveBar2.x,
+                                     staveBar2.y, 50);
+  staveBar3.setContext(ctx).draw();
+  var notesBar3 = [new Vex.Flow.StaveNote({ keys: ["d/5"], duration: "wr" })];
+  
+  // Helper function to justify and draw a 4/4 voice
+  Vex.Flow.Formatter.FormatAndDraw(ctx, staveBar3, notesBar3);
+  
+  // bar 4 - juxtaposing third bar next to third bar
+  var staveBar4 = new Vex.Flow.Stave(staveBar3.width + staveBar3.x,
+                                     staveBar3.y, 250 - staveBar1.getModifierXShift());
+  staveBar4.setBegBarType(Vex.Flow.Barline.type.REPEAT_BEGIN);
+  staveBar4.setEndBarType(Vex.Flow.Barline.type.REPEAT_END);
+  staveBar4.setContext(ctx).draw();
+  var notesBar4 = [
+    new Vex.Flow.StaveNote({ keys: ["c/4"], duration: "q" }),
+    new Vex.Flow.StaveNote({ keys: ["d/4"], duration: "q" }),
+    new Vex.Flow.StaveNote({ keys: ["b/4"], duration: "qr" }),
+    new Vex.Flow.StaveNote({ keys: ["c/4", "e/4", "g/4"], duration: "q" })
+  ];
+
+  // Helper function to justify and draw a 4/4 voice
+  Vex.Flow.Formatter.FormatAndDraw(ctx, staveBar4, notesBar4);
+  
 }
 
 Vex.Flow.Test.Stave.drawVoltaTest = function(options, contextBuilder) {
@@ -393,6 +427,36 @@ Vex.Flow.Test.Stave.configureAllLines = function(options, contextBuilder) {
   equal(config[2].visible, false, "getLinesConfiguration() - Line 2");
   equal(config[3].visible, true, "getLinesConfiguration() - Line 3");
   equal(config[4].visible, false, "getLinesConfiguration() - Line 4");
+
+  ok(true, "all pass");
+}
+
+Vex.Flow.Test.Stave.drawStaveText = function(options, contextBuilder) {
+  var ctx = new contextBuilder(options.canvas_sel, 900, 140);
+  var stave = new Vex.Flow.Stave(300, 10, 300);
+  stave.setText("Violin", Vex.Flow.Modifier.Position.LEFT);
+  stave.setText("Right Text", Vex.Flow.Modifier.Position.RIGHT);
+  stave.setText("Above Text", Vex.Flow.Modifier.Position.ABOVE);
+  stave.setText("Below Text", Vex.Flow.Modifier.Position.BELOW);
+  stave.setContext(ctx).draw();
+
+  ok(true, "all pass");
+}
+
+Vex.Flow.Test.Stave.drawStaveTextMultiLine = function(options, contextBuilder) {
+  var ctx = new contextBuilder(options.canvas_sel, 900, 200);
+  var stave = new Vex.Flow.Stave(300, 40, 300);
+  stave.setText("Violin", Vex.Flow.Modifier.Position.LEFT, {shift_y: -10});
+  stave.setText("2nd line", Vex.Flow.Modifier.Position.LEFT, {shift_y: 10});
+  stave.setText("Right Text", Vex.Flow.Modifier.Position.RIGHT, {shift_y: -10});
+  stave.setText("2nd line", Vex.Flow.Modifier.Position.RIGHT, {shift_y: 10});
+  stave.setText("Above Text", Vex.Flow.Modifier.Position.ABOVE, {shift_y: -10});
+  stave.setText("2nd line", Vex.Flow.Modifier.Position.ABOVE, {shift_y: 10});
+  stave.setText("Left Below Text", Vex.Flow.Modifier.Position.BELOW,
+    {shift_y: -10, justification: Vex.Flow.TextNote.Justification.LEFT});
+  stave.setText("Right Below Text", Vex.Flow.Modifier.Position.BELOW,
+    {shift_y: 10, justification: Vex.Flow.TextNote.Justification.RIGHT});
+  stave.setContext(ctx).draw();
 
   ok(true, "all pass");
 }

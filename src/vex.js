@@ -1,144 +1,61 @@
-// Vex Base Libraries.
-// Mohit Muthanna Cheppudira <mohit@muthanna.com>
+// [VexFlow](http://vexflow.com) - Copyright (c) Mohit Muthanna 2010.
 //
-// Copyright Mohit Muthanna Cheppudira 2010
+// ## Description
+//
+// This file implements utility methods used by the rest of the VexFlow
+// codebase.
+//
+// ## JSHint Settings
+//
+/* global window: false */
+/* global document: false */
 
-/** @constructor */
 function Vex() {}
 
-/**
- * Enable debug mode for special-case code.
- *
- * @define {boolean}
- */
-Vex.Debug = true;
-
-/**
- * Logging levels available to this application.
- * @enum {number}
- */
-Vex.LogLevels = {
-  DEBUG: 5,
-  INFO: 4,
-  WARN: 3,
-  ERROR: 2,
-  FATAL: 1
-}
-
-/**
- * Set the debuglevel for this application.
- *
- * @define {number}
- */
-Vex.LogLevel = 5;
-
-/**
- * Logs a message to the console.
- *
- * @param {Vex.LogLevels} level A logging level.
- * @param {string|number|!Object} A log message (or object to dump).
- */
-Vex.LogMessage = function(level, message) {
-  if ((level <= Vex.LogLevel) && window.console) {
-    var log_message = message;
-
-    if (typeof(message) == 'object') {
-      log_message = {
-        level: level,
-        message: message
-      };
-    } else {
-      log_message = "VexLog: [" + level + "] " + log_message;
-    }
-
-    window.console.log(log_message);
-  }
+// Default log function sends all arguments to console.
+Vex.L = function(block, args) {
+  if (!args) return;
+  var line = Array.prototype.slice.call(args).join(" ");
+  window.console.log(block + ": " + line);
 };
 
-/**
- * Logging shortcuts.
- */
-Vex.LogDebug = function(message) {
-  Vex.LogMessage(Vex.LogLevels.DEBUG, message); }
-Vex.LogInfo = function(message) {
-  Vex.LogMessage(Vex.LogLevels.INFO, message); }
-Vex.LogWarn = function(message) {
-  Vex.LogMessage(Vex.LogLevels.WARN, message); }
-Vex.LogError = function(message) {
-  Vex.LogMessage(Vex.LogLevels.ERROR, message); }
-Vex.LogFatal = function(message, exception) {
-  Vex.LogMessage(Vex.LogLevels.FATAL, message);
-  if (exception) throw exception; else throw "VexFatalError";
-}
-Vex.Log = Vex.LogDebug;
-Vex.L = Vex.LogDebug;
-
-/**
- * Simple assertion checks.
- */
-
-/**
- * An exception for assertions.
- *
- * @constructor
- * @param {string} message The message to display.
- */
-Vex.AssertException = function(message) { this.message = message; }
-Vex.AssertException.prototype.toString = function() {
-  return "AssertException: " + this.message;
-}
-Vex.Assert = function(exp, message) {
-  if (Vex.Debug && !exp) {
-    if (!message) message = "Assertion failed.";
-    throw new Vex.AssertException(message);
-  }
-}
-
-/**
- * An generic runtime exception. For example:
- *
- *    throw new Vex.RuntimeError("BadNoteError", "Bad note: " + note);
- *
- * @constructor
- * @param {string} message The exception message.
- */
+// Default runtime exception.
 Vex.RuntimeError = function(code, message) {
   this.code = code;
   this.message = message;
-}
+};
 Vex.RuntimeError.prototype.toString = function() {
   return "RuntimeError: " + this.message;
-}
-
-Vex.RERR = Vex.RuntimeError;
-
-/**
- * Merge "destination" hash with "source" hash, overwriting like keys
- * in "source" if necessary.
- */
-Vex.Merge = function(destination, source) {
-    for (var property in source)
-        destination[property] = source[property];
-    return destination;
 };
 
-/**
- * Min / Max: If you don't know what this does, you should be ashamed of yourself.
- */
+// Shortcut method for `RuntimeError`.
+Vex.RERR = Vex.RuntimeError;
+
+// Merge `destination` hash with `source` hash, overwriting like keys
+// in `source` if necessary.
+Vex.Merge = function(destination, source) {
+  for (var property in source)
+    destination[property] = source[property];
+  return destination;
+};
+
+// DEPRECATED. Use `Math.min`.
 Vex.Min = function(a, b) {
   return (a > b) ? b : a;
 };
 
+// DEPRECATED. Use `Math.max`.
 Vex.Max = function(a, b) {
   return (a > b) ? a : b;
 };
 
-// Round number to neasest fractional value (.5, .25, etc.)
+// Round number to nearest fractional value (`.5`, `.25`, etc.)
 Vex.RoundN = function(x, n) {
-  return (x % n) >= (n/2) ? parseInt(x / n) * n + n : parseInt(x / n) * n;
+  return (x % n) >= (n/2) ?
+    parseInt(x / n, 10) * n + n : parseInt(x / n, 10) * n;
 };
 
-// Locate the mid point between stave lines. Returns a fractional line if a space
+// Locate the mid point between stave lines. Returns a fractional line if a space.
 Vex.MidLine = function(a, b) {
   var mid_line = b + (a - b) / 2;
   if (mid_line % 2 > 0) {
@@ -147,10 +64,8 @@ Vex.MidLine = function(a, b) {
   return mid_line;
 };
 
-/**
- * Take 'arr' and return a new list consisting of the sorted, unique,
- * contents of arr.
- */
+// Take `arr` and return a new list consisting of the sorted, unique,
+// contents of arr. Does not modify `arr`.
 Vex.SortAndUnique = function(arr, cmp, eq) {
   if (arr.length > 1) {
     var newArr = [];
@@ -158,7 +73,7 @@ Vex.SortAndUnique = function(arr, cmp, eq) {
     arr.sort(cmp);
 
     for (var i = 0; i < arr.length; ++i) {
-      if (i == 0 || !eq(arr[i], last)) {
+      if (i === 0 || !eq(arr[i], last)) {
         newArr.push(arr[i]);
       }
       last = arr[i];
@@ -168,11 +83,9 @@ Vex.SortAndUnique = function(arr, cmp, eq) {
   } else {
     return arr;
   }
-}
+};
 
-/**
- * Check if array "a" contains "obj"
- */
+// Check if array `a` contains `obj`.
 Vex.Contains = function(a, obj) {
   var i = a.length;
   while (i--) {
@@ -181,12 +94,9 @@ Vex.Contains = function(a, obj) {
     }
   }
   return false;
-}
+};
 
-/**
- * @param {string} canvas_sel The selector id for the canvas.
- * @return {!Object} A 2D canvas context.
- */
+// Get the 2D Canvas context from DOM element `canvas_sel`.
 Vex.getCanvasContext = function(canvas_sel) {
   if (!canvas_sel)
     throw new Vex.RERR("BadArgument", "Invalid canvas selector: " + canvas_sel);
@@ -198,15 +108,12 @@ Vex.getCanvasContext = function(canvas_sel) {
   }
 
   return canvas.getContext('2d');
-}
+};
 
-/**
- * Draw a tiny marker on the specified canvas. A great debugging aid.
- *
- * @param {!Object} ctx Canvas context.
- * @param {number} x X position for dot.
- * @param {number} y Y position for dot.
- */
+// Draw a tiny dot marker on the specified canvas. A great debugging aid.
+//
+// `ctx`: Canvas context.
+// `x`, `y`: Dot coordinates.
 Vex.drawDot = function(ctx, x, y, color) {
   var c = color || "#f55";
   ctx.save();
@@ -218,11 +125,35 @@ Vex.drawDot = function(ctx, x, y, color) {
   ctx.closePath();
   ctx.fill();
   ctx.restore();
-}
+};
 
+// Benchmark. Run function `f` once and report time elapsed shifted by `s` milliseconds.
 Vex.BM = function(s, f) {
   var start_time = new Date().getTime();
   f();
   var elapsed = new Date().getTime() - start_time;
   Vex.L(s + elapsed + "ms");
-}
+};
+
+// Basic classical inheritance helper. Usage:
+// ```
+// // Vex.Inherit(Child, Parent, {
+// //   getName: function() {return this.name;},
+// //   setName: function(name) {this.name = name}
+// // });
+// //
+// // Returns 'Child'.
+// ```
+Vex.Inherit = (function () {
+  var F = function () {};
+  // `C` is Child. `P` is parent. `O` is an object to
+  // to extend `C` with.
+  return function (C, P, O) {
+    F.prototype = P.prototype;
+    C.prototype = new F();
+    C.superclass = P.prototype;
+    C.prototype.constructor = C;
+    Vex.Merge(C.prototype, O);
+    return C;
+  };
+}());

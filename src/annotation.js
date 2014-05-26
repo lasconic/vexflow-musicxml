@@ -1,131 +1,158 @@
-// VexFlow - Music Engraving for HTML5
-// Copyright Mohit Muthanna 2010
+// [VexFlow](http://vexflow.com) - Copyright (c) Mohit Muthanna 2010.
 //
-// This class implements text annotations.
+// ## Description
+//
+// This file implements text annotations as modifiers that can be attached to
+// notes.
+//
+// See `tests/annotation_tests.js` for usage examples.
 
-/**
- * @constructor
- */
-Vex.Flow.Annotation = function(text) {
-  if (arguments.length > 0) this.init(text);
-}
-Vex.Flow.Annotation.prototype = new Vex.Flow.Modifier();
-Vex.Flow.Annotation.prototype.constructor = Vex.Flow.Annotation;
-Vex.Flow.Annotation.superclass = Vex.Flow.Modifier.prototype;
+Vex.Flow.Annotation = (function() {
+  function Annotation(text) {
+    if (arguments.length > 0) this.init(text);
+  }
 
-Vex.Flow.Annotation.Justify = {
-  LEFT: 1,
-  CENTER: 2,
-  RIGHT: 3,
-  CENTER_STEM: 4
-};
+  // To enable logging for this class. Set `Vex.Flow.Annotation.DEBUG` to `true`.
+  function L() { if (Annotation.DEBUG) Vex.L("Vex.Flow.Annotation", arguments); }
 
-Vex.Flow.Annotation.VerticalJustify = {
-  TOP: 1,
-  CENTER: 2,
-  BOTTOM: 3,
-  CENTER_STEM: 4
-};
-
-Vex.Flow.Annotation.prototype.init = function(text) {
-  var superclass = Vex.Flow.Annotation.superclass;
-  superclass.init.call(this);
-
-  this.note = null;
-  this.index = null;
-  this.text_line = 0;
-  this.text = text;
-  this.justification = Vex.Flow.Annotation.Justify.CENTER;
-  this.vert_justification = Vex.Flow.Annotation.VerticalJustify.TOP;
-  this.font = {
-    family: "Arial",
-    size: 10,
-    weight: ""
+  // Text annotations can be positioned and justified relative to the note.
+  Annotation.Justify = {
+    LEFT: 1,
+    CENTER: 2,
+    RIGHT: 3,
+    CENTER_STEM: 4
   };
 
-  this.setWidth(Vex.Flow.textWidth(text));
-}
+  Annotation.VerticalJustify = {
+    TOP: 1,
+    CENTER: 2,
+    BOTTOM: 3,
+    CENTER_STEM: 4
+  };
 
-Vex.Flow.Annotation.prototype.getCategory = function() { return "annotations"; }
-Vex.Flow.Annotation.prototype.setTextLine = function(line)
-  { this.text_line = line; return this; }
-Vex.Flow.Annotation.prototype.setFont = function(family, size, weight) {
-  this.font = { family: family, size: size, weight: weight };
-  return this;
-}
-Vex.Flow.Annotation.prototype.setBottom = function(bottom) {
-  if (bottom) {
-    this.vert_justification = Vex.Flow.Annotation.VerticalJustify.BOTTOM;
-  } else {
-    this.vert_justification = Vex.Flow.Annotation.VerticalJustify.TOP;
-  }
-  return this;
-}
-Vex.Flow.Annotation.prototype.setVerticalJustification = function(
-    vert_justification) {
-  this.vert_justification = vert_justification;
-  return this;
-}
-Vex.Flow.Modifier.prototype.getJustification = function() {
-  return this.justification; }
-Vex.Flow.Modifier.prototype.setJustification = function(justification) {
-  this.justification = justification; return this; }
-
-Vex.Flow.Annotation.prototype.draw = function() {
-  if (!this.context) throw new Vex.RERR("NoContext",
-    "Can't draw text annotation without a context.");
-  if (!this.note) throw new Vex.RERR("NoNoteForAnnotation",
-    "Can't draw text annotation without an attached note.");
-
-  var start = this.note.getModifierStartXY(Vex.Flow.Modifier.Position.ABOVE,
-      this.index);
-
-  this.context.save();
-  this.context.setFont(this.font.family, this.font.size, this.font.weight);
-  var text_width = this.context.measureText(this.text).width;
-
-  // Estimate text height to be the same as the width of an 'm'.
+  // ## Prototype Methods
   //
-  // This is a hack to work around the inability to measure text height
-  // in HTML5 Canvas.
-  var text_height = this.context.measureText("m").width;
+  // Annotations inherit from `Modifier` and is positioned correctly when
+  // in a `ModifierContext`.
+  var Modifier = Vex.Flow.Modifier;
+  Vex.Inherit(Annotation, Modifier, {
+    // Create a new `Annotation` with the string `text`.
+    init: function(text) {
+      Annotation.superclass.init.call(this);
 
-  if (this.justification == Vex.Flow.Annotation.Justify.LEFT) {
-    var x = start.x;
-  } else if (this.justification == Vex.Flow.Annotation.Justify.RIGHT) {
-    var x = start.x - text_width;
-  } else if (this.justification == Vex.Flow.Annotation.Justify.CENTER) {
-    var x = start.x - text_width / 2;
-  } else /* CENTER_STEM */ {
-    var x = this.note.getStemX() - text_width / 2;
-  }
+      this.note = null;
+      this.index = null;
+      this.text_line = 0;
+      this.text = text;
+      this.justification = Annotation.Justify.CENTER;
+      this.vert_justification = Annotation.VerticalJustify.TOP;
+      this.font = {
+        family: "Arial",
+        size: 10,
+        weight: ""
+      };
 
-  if (this.note.getStemExtents) {
-    var stem_ext = this.note.getStemExtents();
-    var spacing = this.note.stave.options.spacing_between_lines_px;
-  }
+      // The default width is calculated from the text.
+      this.setWidth(Vex.Flow.textWidth(text));
+    },
 
-  if (this.vert_justification == Vex.Flow.Annotation.VerticalJustify.BOTTOM) {
-    var y = this.note.stave.getYForBottomText(this.text_line);
-    if (stem_ext) {
-      y = Vex.Max(y, (stem_ext.baseY) + (spacing * (this.text_line + 2)));
+    // Return the modifier type. Used by the `ModifierContext` to calculate
+    // layout.
+    getCategory: function() { return "annotations"; },
+
+    // Set the vertical position of the text relative to the stave.
+    setTextLine: function(line) { this.text_line = line; return this; },
+
+    // Set font family, size, and weight. E.g., `Arial`, `10pt`, `Bold`.
+    setFont: function(family, size, weight) {
+      this.font = { family: family, size: size, weight: weight };
+      return this;
+    },
+
+    // Set vertical position of text (above or below stave). `just` must be
+    // a value in `Annotation.VerticalJustify`.
+    setVerticalJustification: function(just) {
+      this.vert_justification = just;
+      return this;
+    },
+
+    // Get and set horizontal justification. `justification` is a value in
+    // `Annotation.Justify`.
+    getJustification: function() { return this.justification; },
+    setJustification: function(justification) {
+      this.justification = justification; return this; },
+
+    // Render text beside the note.
+    draw: function() {
+      if (!this.context) throw new Vex.RERR("NoContext",
+        "Can't draw text annotation without a context.");
+      if (!this.note) throw new Vex.RERR("NoNoteForAnnotation",
+        "Can't draw text annotation without an attached note.");
+
+      var start = this.note.getModifierStartXY(Modifier.Position.ABOVE,
+          this.index);
+
+      // We're changing context parameters. Save current state.
+      this.context.save();
+      this.context.setFont(this.font.family, this.font.size, this.font.weight);
+      var text_width = this.context.measureText(this.text).width;
+
+      // Estimate text height to be the same as the width of an 'm'.
+      //
+      // This is a hack to work around the inability to measure text height
+      // in HTML5 Canvas (and SVG).
+      var text_height = this.context.measureText("m").width;
+      var x, y;
+
+      if (this.justification == Annotation.Justify.LEFT) {
+        x = start.x;
+      } else if (this.justification == Annotation.Justify.RIGHT) {
+        x = start.x - text_width;
+      } else if (this.justification == Annotation.Justify.CENTER) {
+        x = start.x - text_width / 2;
+      } else /* CENTER_STEM */ {
+        x = this.note.getStemX() - text_width / 2;
+      }
+
+      var stem_ext, spacing;
+      var has_stem = this.note.hasStem();
+      var stave = this.note.getStave();
+
+      // The position of the text varies based on whether or not the note
+      // has a stem.
+      if (has_stem) {
+        stem_ext = this.note.getStem().getExtents();
+        spacing = stave.getSpacingBetweenLines();
+      }
+
+      if (this.vert_justification == Annotation.VerticalJustify.BOTTOM) {
+        y = stave.getYForBottomText(this.text_line);
+        if (has_stem) {
+          var stem_base = (this.note.getStemDirection() === 1 ? stem_ext.baseY : stem_ext.topY);
+          y = Math.max(y, stem_base + (spacing * (this.text_line + 2)));
+        }
+      } else if (this.vert_justification ==
+                 Annotation.VerticalJustify.CENTER) {
+        var yt = this.note.getYForTopText(this.text_line) - 1;
+        var yb = stave.getYForBottomText(this.text_line);
+        y = yt + ( yb - yt ) / 2 + text_height / 2;
+      } else if (this.vert_justification ==
+                 Annotation.VerticalJustify.TOP) {
+        y = Math.min(stave.getYForTopText(this.text_line), this.note.getYs()[0] - 10);
+        if (has_stem) {
+          y = Math.min(y, (stem_ext.topY - 5) - (spacing * this.text_line));
+        }
+      } else /* CENTER_STEM */{
+        var extents = this.note.getStemExtents();
+        y = extents.topY + (extents.baseY - extents.topY) / 2 +
+          text_height / 2;
+      }
+
+      L("Rendering annotation: ", this.text, x, y);
+      this.context.fillText(this.text, x, y);
+      this.context.restore();
     }
-  } else if (this.vert_justification ==
-             Vex.Flow.Annotation.VerticalJustify.CENTER) {
-    var yt = this.note.getYForTopText(this.text_line) - 1;
-    var yb = this.note.stave.getYForBottomText(this.text_line);
-    var y = yt + ( yb - yt ) / 2 + text_height / 2;
-  } else if (this.vert_justification ==
-             Vex.Flow.Annotation.VerticalJustify.TOP) {
-    var y = this.note.stave.getYForTopText(this.text_line);
-    if (stem_ext)
-      y = Vex.Min(y, (stem_ext.topY - 5) - (spacing * this.text_line));
-  } else /* CENTER_STEM */{
-    var extents = this.note.getStemExtents();
-    var y = extents.topY + ( extents.baseY - extents.topY ) / 2 +
-      text_height / 2;
-  }
+  });
 
-  this.context.fillText(this.text, x, y);
-  this.context.restore();
-}
+  return Annotation;
+}());

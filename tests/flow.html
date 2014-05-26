@@ -8,7 +8,7 @@
       padding: 20px;
       font-family: Arial, sans-serif;
       font-size: 12px;
-      color: #554;
+      color: black;
       margin: 0px;
       height: 80%;
     }
@@ -39,21 +39,17 @@
     div.testcanvas {
       font-family: Arial, sans-serif;
       font-size: 18px;
-      padding: 10px;
       color: #554;
     }
 
     div.testcanvas .vex-tabdiv {
-      background: #eed;
-      padding: 10px;
-      border: 10px solid #ddc;
+      background: white;
     }
 
     div.testcanvas .name {
       font-family: Arial, sans-serif;
       font-size: 18px;
-      padding: 10px;
-      color: #554;
+      color: #447;
     }
 
   </style>
@@ -79,9 +75,14 @@
   <script src="../src/tickable.js"></script>
   <script src="../src/note.js"></script>
   <script src="../src/bend.js"></script>
+  <script src="../src/stem.js"></script>
+  <script src="../src/notehead.js"></script>
+  <script src="../src/stemmablenote.js"></script>
   <script src="../src/stavenote.js"></script>
   <script src="../src/tabnote.js"></script>
   <script src="../src/barnote.js"></script>
+  <script src="../src/clefnote.js"></script>
+  <script src="../src/timesignote.js"></script>
   <script src="../src/ghostnote.js"></script>
   <script src="../src/formatter.js"></script>
   <script src="../src/stavetie.js"></script>
@@ -104,15 +105,23 @@
   <script src="../src/staverepetition.js"></script>
   <script src="../src/stavesection.js"></script>
   <script src="../src/stavetempo.js"></script>
+  <script src="../src/stavetext.js"></script>
   <script src="../src/articulation.js"></script>
   <script src="../src/tremolo.js"></script>
   <script src="../src/raphaelcontext.js"></script>
+  <script src="../src/canvascontext.js"></script>
   <script src="../src/tuplet.js"></script>
   <script src="../src/boundingbox.js"></script>
   <script src="../src/textnote.js"></script>
   <script src="../src/strokes.js"></script>
   <script src="../src/stringnumber.js"></script>
   <script src="../src/frethandfinger.js"></script>
+  <script src="../src/gracenote.js"></script>
+  <script src="../src/gracenotegroup.js"></script>
+  <script src="../src/curve.js"></script>
+  <script src="../src/staveline.js"></script>
+  <script src="../src/crescendo.js"></script>
+
   <script src="../src/measure.js"></script>
   <script src="../src/musicxml.js"></script>
   <script src="../src/document.js"></script>
@@ -165,6 +174,13 @@
   <script src="strokes_tests.js"></script>
   <script src="stringnumber_tests.js"></script>
   <script src="rests_tests.js"></script>
+  <script src="threevoice_tests.js"></script>
+  <script src="table_tests.js"></script>
+  <script src="gracenote_tests.js"></script>
+  <script src="curve_tests.js"></script>
+  <script src="notehead_tests.js"></script>
+  <script src="staveline_tests.js"></script>
+
   <script src="document_tests.js"></script>
 
   <script>
@@ -172,6 +188,7 @@
       Vex.Flow.Test.Stave.Start();
       Vex.Flow.Test.TabStave.Start();
       Vex.Flow.Test.Voice.Start();
+      Vex.Flow.Test.NoteHead.Start();
       Vex.Flow.Test.StaveNote.Start();
       Vex.Flow.Test.TabNote.Start();
       Vex.Flow.Test.TickContext.Start();
@@ -188,6 +205,7 @@
       Vex.Flow.Test.TabSlide.Start();
       Vex.Flow.Test.Beam.Start();
       Vex.Flow.Test.AutoBeamFormatting.Start();
+      Vex.Flow.Test.GraceNote.Start();
       Vex.Flow.Test.Vibrato.Start();
       Vex.Flow.Test.Annotation.Start();
       Vex.Flow.Test.Tuning.Start();
@@ -204,9 +222,17 @@
       Vex.Flow.Test.Strokes.Start();
       Vex.Flow.Test.StringNumber.Start();
       Vex.Flow.Test.Rests.Start();
+<<<<<<< HEAD
       Vex.Flow.Test.Document.Start();
 /*
+=======
+      Vex.Flow.Test.ThreeVoices.Start();
+      Vex.Flow.Test.Curve.Start();
+>>>>>>> upstream/master
       Vex.Flow.Test.TextNote.Start();
+      Vex.Flow.Test.StaveLine.Start();
+/*
+      Vex.Flow.Test.Table.Start(); // These tests are way too rigid
 */
     });
   </script>

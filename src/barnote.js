@@ -1,79 +1,77 @@
-// Vex Flow Notation
-// Mohit Muthanna <mohit@muthanna.com>
+// [VexFlow](http://vexflow.com) - Copyright (c) Mohit Muthanna 2010.
 //
-// Copyright Mohit Muthanna 2010
+// ## Description
 //
-// Requires vex.js.
+// A `BarNote` is used to render bar lines (from `barline.js`). `BarNote`s can
+// be added to a voice and rendered in the middle of a stave. Since it has no
+// duration, it consumes no `tick`s, and is dealt with appropriately by the formatter.
+//
+// See `tests/barnote_tests.js` for usage examples.
 
-/** @constructor */
-Vex.Flow.BarNote = function() { this.init(); }
-Vex.Flow.BarNote.prototype = new Vex.Flow.Note();
-Vex.Flow.BarNote.superclass = Vex.Flow.Note.prototype;
-Vex.Flow.BarNote.constructor = Vex.Flow.BarNote;
+Vex.Flow.BarNote = (function() {
+  function BarNote() { this.init(); }
 
-Vex.Flow.BarNote.prototype.init = function() {
-  var superclass = Vex.Flow.BarNote.superclass;
-  superclass.init.call(this, {duration: "b"});
+  // To enable logging for this class. Set `Vex.Flow.BarNote.DEBUG` to `true`.
+  function L() { if (BarNote.DEBUG) Vex.L("Vex.Flow.BarNote", arguments); }
 
-  var TYPE = Vex.Flow.Barline.type;
-  this.metrics = {
-    widths: {}
-  }
+  // ## Prototype Methods
+  Vex.Inherit(BarNote, Vex.Flow.Note, {
+    init: function() {
+      BarNote.superclass.init.call(this, {duration: "b"});
 
-  this.metrics.widths[TYPE.SINGLE] = 8;
-  this.metrics.widths[TYPE.DOUBLE] = 12;
-  this.metrics.widths[TYPE.END] = 15;
-  this.metrics.widths[TYPE.REPEAT_BEGIN] = 14;
-  this.metrics.widths[TYPE.REPEAT_END] = 14;
-  this.metrics.widths[TYPE.REPEAT_BOTH] = 18;
-  this.metrics.widths[TYPE.NONE] = 0;
+      var TYPE = Vex.Flow.Barline.type;
+      this.metrics = {
+        widths: {}
+      };
 
-  // Note properties
-  this.ignore_ticks = true;
-  this.type = TYPE.SINGLE;
-  this.setWidth(this.metrics.widths[this.type]);
-}
+      // Defined this way to prevent lint errors.
+      this.metrics.widths[TYPE.SINGLE] = 8;
+      this.metrics.widths[TYPE.DOUBLE] = 12;
+      this.metrics.widths[TYPE.END] = 15;
+      this.metrics.widths[TYPE.REPEAT_BEGIN] = 14;
+      this.metrics.widths[TYPE.REPEAT_END] = 14;
+      this.metrics.widths[TYPE.REPEAT_BOTH] = 18;
+      this.metrics.widths[TYPE.NONE] = 0;
 
-Vex.Flow.BarNote.prototype.setType = function(type) {
-  this.type = type;
-  this.setWidth(this.metrics.widths[this.type]);
-  return this;
-}
+      // Tell the formatter that bar notes have no duration.
+      this.ignore_ticks = true;
+      this.type = TYPE.SINGLE;
 
-Vex.Flow.BarNote.prototype.getType = function() {
-  return this.type;
-}
+      // Set width to width of relevant `Barline`.
+      this.setWidth(this.metrics.widths[this.type]);
+    },
 
-Vex.Flow.BarNote.prototype.setStave = function(stave) {
-  var superclass = Vex.Flow.BarNote.superclass;
-  superclass.setStave.call(this, stave);
-}
+    // Get and set the type of Bar note. `type` must be one of `Vex.Flow.Barline.type`.
+    getType: function() { return this.type; },
+    setType: function(type) {
+      this.type = type;
+      this.setWidth(this.metrics.widths[this.type]);
+      return this;
+    },
 
-Vex.Flow.BarNote.prototype.getBoundingBox = function() {
-  return new Vex.Flow.BoundingBox(0, 0, 0, 0);
-}
+    getBoundingBox: function() {
+      return new Vex.Flow.BoundingBox(0, 0, 0, 0);
+    },
 
-Vex.Flow.BarNote.prototype.addToModifierContext = function(mc) {
-  return this;
-}
+    addToModifierContext: function() {
+      /* overridden to ignore */
+      return this;
+    },
 
-Vex.Flow.BarNote.prototype.preFormat = function() {
-  this.setPreFormatted(true);
-  return this;
-}
+    preFormat: function() {
+      /* overridden to ignore */
+      this.setPreFormatted(true);
+      return this;
+    },
 
-Vex.Flow.BarNote.prototype.draw = function() {
-  if (!this.stave) throw new Vex.RERR("NoStave", "Can't draw without a stave.");
+    // Render note to stave.
+    draw: function() {
+      if (!this.stave) throw new Vex.RERR("NoStave", "Can't draw without a stave.");
+      L("Rendering bar line at: ", this.getAbsoluteX());
+      var barline = new Vex.Flow.Barline(this.type, this.getAbsoluteX());
+      barline.draw(this.stave);
+    }
+  });
 
-  /*
-  var x = this.getAbsoluteX() + this.x_shift;
-  if (this.type == Vex.Flow.BarNote.TYPE.SINGLE) {
-    this.stave.drawVerticalBarFixed(x);
-  } else if (this.type == Vex.Flow.BarNote.TYPE.DOUBLE) {
-    this.stave.drawVerticalBarFixed(x);
-    this.stave.drawVerticalBarFixed(x + this.metrics.double_x_shift);
-  }
-  */
-  var barline = new Vex.Flow.Barline(this.type, this.getAbsoluteX());
-  barline.draw(this.stave, this.getAbsoluteX());
-}
+  return BarNote;
+}());
