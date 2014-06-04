@@ -154,8 +154,9 @@ Vex.Flow.Document.prototype.getMeasureNumber = function(m) {
 Vex.Flow.Document.prototype.getMeasure = function(m) {
   if (m in this.measures) return this.measures[m];
   var measure = this.backend.getMeasure(m);
-  Vex.Assert(measure instanceof Vex.Flow.Measure,
-             "Backend must return valid Vex.Flow.Measure");
+  if (typeof console != "undefined" && console.assert)
+      console.assert(measure instanceof Vex.Flow.Measure,
+                     "Backend must return valid Vex.Flow.Measure");
   this.measures[m] = measure;
   return measure;
 }

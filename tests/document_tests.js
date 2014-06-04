@@ -41,6 +41,9 @@ Vex.Flow.Test.Document.measure = function(options, contextBuilder) {
         measure.addNote({keys: ["g##/4"], duration: "4"});
         break;
     }
+    Vex.Flow.Backend.IR.prototype.getStaveConnectors = function() {
+      return [];
+    }
     ok(true, "added notes to measure");
     return measure;
   };

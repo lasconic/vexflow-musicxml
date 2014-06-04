@@ -204,8 +204,9 @@ Vex.Flow.DocumentFormatter.prototype.getVexflowVoice =function(voice, staves){
       }));
     }
   }
-  Vex.Assert(vfVoice.stave instanceof Vex.Flow.Stave,
-             "VexFlow voice should have a stave");
+  if (typeof console != "undefined" && console.assert)
+      console.assert(vfVoice.stave instanceof Vex.Flow.Stave,
+                     "VexFlow voice should have a stave");
   return [vfVoice, vexflowObjects, lyricVoice];
 }
 
@@ -246,7 +247,8 @@ Vex.Flow.DocumentFormatter.prototype.getMinMeasureWidth = function(m) {
 
     // Create dummy canvas to use for formatting (required by TextNote)
     var canvas = document.createElement("canvas");
-    var context = canvas.getContext("2d");
+    var context = Vex.Flow.Renderer.bolsterCanvasContext(
+                        canvas.getContext("2d"));
 
     var allVfVoices = [];
     var startStave = 0; // stave for part to start on
@@ -570,7 +572,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
     elem.innerHTML = "";
     this.canvases = [];
   }
-  var canvasWidth = $(elem).width() - 10; // TODO: can we use jQuery?
+  var canvasWidth = $(elem).width() - 10; // TODO: remove jQuery dependency
   var renderWidth = Math.floor(canvasWidth / this.zoom);
   // Invalidate all blocks/staves/voices
   this.minMeasureWidths = []; // heights don't change with stave modifiers
@@ -608,7 +610,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
       if (! canvas.parentNode)
         elem.appendChild(canvas); // Insert at the end of elem
       this.canvases[b] = canvas;
-      context = canvas.getContext("2d");
+      context = Vex.Flow.Renderer.bolsterCanvasContext(canvas.getContext("2d"));
     }
     else {
       canvas = this.canvases[b];
@@ -619,7 +621,7 @@ Vex.Flow.DocumentFormatter.Liquid.prototype.draw = function(elem, options) {
         canvas.style.width = width.toString() + "px";
         canvas.style.height = height.toString() + "px";
       }
-      context = canvas.getContext("2d");
+      context = Vex.Flow.Renderer.bolsterCanvasContext(canvas.getContext("2d"));
       context.clearRect(0, 0, canvas.width, canvas.height);
     }
     // TODO: Figure out why setFont method is called
