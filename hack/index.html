@@ -20,26 +20,36 @@
 
       var doc = null;
       $(document).ready(function() {
-        var req = new XMLHttpRequest();
+        //var req = new XMLHttpRequest();
         var uri = getParameter('doc');
-        if (! uri) 
-          uri = 'Reunion.zip';
 
-        req.open('GET', uri, true);
-        req.onreadystatechange = function() {
-          if (req.readyState != 4) return;
-          zip.workerScriptsPath = "/libs/";
+        if (! uri) 
+          uri = 'Reunion.mxl';
+        else if (uri.charAt(uri.length - 1) == '/')
+          uri = uri.substring(0, uri.length - 1);
+        console.log(uri);
+
+var xhr = new XMLHttpRequest();
+xhr.open('GET', uri, true);
+xhr.responseType = 'blob';
+xhr.onload = function(e) {
+  if (this.status == 200) {
+    var myBlob = this.response;
+    // myBlob is now the blob that the object URL pointed to.
+    zip.workerScriptsPath = "/lib/";
 
           // use a BlobReader to read the zip from a Blob object
-          zip.createReader(new zip.TextReader(req.responseText), function(reader) {
+          zip.createReader(new zip.BlobReader(myBlob), function(reader) {
             // get all entries from the zip
             reader.getEntries(function(entries) {
               if (entries.length) {
 
                 // get first entry content as text
-                entries[0].getData(new zip.TextWriter(), function(text) {
+                entries[1].getData(new zip.TextWriter(), function(text) {
                   // text contains the entry data as a String
                   console.log(text);
+                  doc = new Vex.Flow.Document(text);
+                  doc.getFormatter().setWidth(800).draw($("#viewer")[0]);
 
                   // close the zip reader
                   reader.close(function() {
@@ -54,12 +64,20 @@
           }, function(error) {
             // onerror callback
           });
+  }
+};
+xhr.send();
+
+        //req.open('GET', uri, true);
+        //req.onreadystatechange = function() {
+         // if (req.readyState != 4) return;
+          
 
 
           //doc = new Vex.Flow.Document(req.responseText);
           //doc.getFormatter().setWidth(800).draw($("#viewer")[0]);
-        };
-        req.send(null);
+        //};
+        //req.send(null);
       });
     </script>
     <style>
