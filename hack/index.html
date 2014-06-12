@@ -20,7 +20,7 @@
         else return decodeURIComponent(results[1].replace(/\+/g, " "));
       }
 
-      function sanitize(s) {
+      function stripTrailingSlash(s) {
         if (s.charAt(s.length - 1) == '/')
           s = s.substring(0, s.length - 1);
         return s;
@@ -37,8 +37,8 @@
           if(!secret || !nid)
               mxlUri = "Reunion.mxl";
           else { 
-              secret = sanitize(secret);
-              nid = sanitize(nid);
+              secret = stripTrailingSlash(secret);
+              nid = stripTrailingSlash(nid);
 
               mxlUri = "http://static.musescore.com/"+ nid + "/" + secret +"/score.mxl";
               midiUri = "http://static.musescore.com/"+ nid + "/" + secret +"/score.mid";
@@ -46,7 +46,7 @@
           }
         }
         else 
-          mxlUri = sanitize(mxlUri);
+          mxlUri = stripTrailingSlash(mxlUri);
         console.log(mxlUri);
 
         var xhr = new XMLHttpRequest();
