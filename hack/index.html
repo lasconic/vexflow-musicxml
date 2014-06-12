@@ -9,6 +9,8 @@
     <script type="text/javascript" src="/lib/zip.js"></script>
 
     <script>
+      zip.workerScriptsPath = "/lib/";
+
       // source: http://stackoverflow.com/a/901144
       function getParameter(name) {
         name = name.replace(/\[]/, "\\\[").replace(/[\]]/, "\\\]");
@@ -20,64 +22,59 @@
 
       var doc = null;
       $(document).ready(function() {
-        //var req = new XMLHttpRequest();
-        var uri = getParameter('doc');
+        var mxlUri = getParameter('doc');
+        var secret = getParameter('secret');
+        var nid = getParameter('nid');
+        var midiUri;
+        var syncUri;
+        if (! mxlUri) { 
+          if(!secret || !nid)
+              mxlUri = "Reunion.mxl";
+          else { 
+              mxlUri = "http://static.musescore.com/"+ nid + "/" + secret +"/score.mxl";
+              midiUri = "http://static.musescore.com/"+ nid + "/" + secret +"/score.mid"
+              syncUri = "http://api.musescore.com/services/rest/score/"+ nid +"/time.json?oauth_consumer_key=musichackday"
+          }
+        }
+        else if (mxlUri.charAt(mxlUri.length - 1) == '/')
+          mxlUri = mxlUri.substring(0, mxlUri.length - 1);
+        console.log(mxlUri);
 
-        if (! uri) 
-          uri = 'Reunion.mxl';
-        else if (uri.charAt(uri.length - 1) == '/')
-          uri = uri.substring(0, uri.length - 1);
-        console.log(uri);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', mxlUri, true);
+        xhr.responseType = 'blob';
+        xhr.onload = function(e) {
+          if (this.status == 200) {
+            var myBlob = this.response;
+            // use a BlobReader to read the zip from a Blob object
+            zip.createReader(new zip.BlobReader(myBlob), function(reader) {
+              // get all entries from the zip
+              reader.getEntries(function(entries) {
+                if (entries.length) {
 
-var xhr = new XMLHttpRequest();
-xhr.open('GET', uri, true);
-xhr.responseType = 'blob';
-xhr.onload = function(e) {
-  if (this.status == 200) {
-    var myBlob = this.response;
-    // myBlob is now the blob that the object URL pointed to.
-    zip.workerScriptsPath = "/lib/";
+                  // get first entry content as text
+                  entries[1].getData(new zip.TextWriter(), function(text) {
+                    // text contains the entry data as a String
+                    console.log(text);
+                    doc = new Vex.Flow.Document(text);
+                    doc.getFormatter().setWidth(800).draw($("#viewer")[0]);
 
-          // use a BlobReader to read the zip from a Blob object
-          zip.createReader(new zip.BlobReader(myBlob), function(reader) {
-            // get all entries from the zip
-            reader.getEntries(function(entries) {
-              if (entries.length) {
+                    // close the zip reader
+                    reader.close(function() {
+                      // onclose callback
+                    });
 
-                // get first entry content as text
-                entries[1].getData(new zip.TextWriter(), function(text) {
-                  // text contains the entry data as a String
-                  console.log(text);
-                  doc = new Vex.Flow.Document(text);
-                  doc.getFormatter().setWidth(800).draw($("#viewer")[0]);
-
-                  // close the zip reader
-                  reader.close(function() {
-                    // onclose callback
+                  }, function(current, total) {
+                    // onprogress callback
                   });
-
-                }, function(current, total) {
-                  // onprogress callback
-                });
-              }
+                }
+              });
+            }, function(error) {
+              // onerror callback
             });
-          }, function(error) {
-            // onerror callback
-          });
-  }
-};
-xhr.send();
-
-        //req.open('GET', uri, true);
-        //req.onreadystatechange = function() {
-         // if (req.readyState != 4) return;
-          
-
-
-          //doc = new Vex.Flow.Document(req.responseText);
-          //doc.getFormatter().setWidth(800).draw($("#viewer")[0]);
-        //};
-        //req.send(null);
+          }
+        };
+        xhr.send();
       });
     </script>
     <style>
