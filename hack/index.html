@@ -1,0 +1,77 @@
+<html>
+  <head>
+    <title>VexFlow MusicXML Viewer</title>
+    <meta name="viewport" content="initial-scale = 1.0, minimum-scale = 1.0, maximum-scale = 1.0, user-scalable = no">
+
+    <!-- Compiled Sources (may need to be copied to same directory) -->
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="vexflow-debug.js"></script>
+    <script type="text/javascript" src="/lib/zip.js"></script>
+
+    <script>
+      // source: http://stackoverflow.com/a/901144
+      function getParameter(name) {
+        name = name.replace(/\[]/, "\\\[").replace(/[\]]/, "\\\]");
+        var regex = new RegExp("[\\?&]" + name + "=([^&#]*)");
+        var results = regex.exec(window.location.search);
+        if (results == null) return undefined;
+        else return decodeURIComponent(results[1].replace(/\+/g, " "));
+      }
+
+      var doc = null;
+      $(document).ready(function() {
+        var req = new XMLHttpRequest();
+        var uri = getParameter('doc');
+        if (! uri) 
+          uri = 'Reunion.zip';
+
+        req.open('GET', uri, true);
+        req.onreadystatechange = function() {
+          if (req.readyState != 4) return;
+          zip.workerScriptsPath = "/libs/";
+
+          // use a BlobReader to read the zip from a Blob object
+          zip.createReader(new zip.TextReader(req.responseText), function(reader) {
+            // get all entries from the zip
+            reader.getEntries(function(entries) {
+              if (entries.length) {
+
+                // get first entry content as text
+                entries[0].getData(new zip.TextWriter(), function(text) {
+                  // text contains the entry data as a String
+                  console.log(text);
+
+                  // close the zip reader
+                  reader.close(function() {
+                    // onclose callback
+                  });
+
+                }, function(current, total) {
+                  // onprogress callback
+                });
+              }
+            });
+          }, function(error) {
+            // onerror callback
+          });
+
+
+          //doc = new Vex.Flow.Document(req.responseText);
+          //doc.getFormatter().setWidth(800).draw($("#viewer")[0]);
+        };
+        req.send(null);
+      });
+    </script>
+    <style>
+      #viewer {
+        width: 100%;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewer">
+      <p>Please enable JavaScript to use the viewer.</p>
+    </div>
+  </body>
+</html>

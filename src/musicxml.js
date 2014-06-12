@@ -27,7 +27,10 @@ Vex.Flow.Backend.MusicXML = function() {
 
 Vex.Flow.Backend.MusicXML.appearsValid = function(data) {
   if (typeof data == "string") {
-    return data.search(/<score-partwise/i) != -1;
+    var result = (data.search(/<score-partwise/i) != -1);
+    if (!result)
+        result = data.indexOf('PK') == 0;
+    return result;
   }
   return (data instanceof Document) &&
          (data.documentElement.nodeName == 'score-partwise');
