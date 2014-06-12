@@ -20,6 +20,12 @@
         else return decodeURIComponent(results[1].replace(/\+/g, " "));
       }
 
+      function sanitize(s) {
+        if (s.charAt(s.length - 1) == '/')
+          s = s.substring(0, s.length - 1);
+        return s;
+      }
+
       var doc = null;
       $(document).ready(function() {
         var mxlUri = getParameter('doc');
@@ -31,13 +37,16 @@
           if(!secret || !nid)
               mxlUri = "Reunion.mxl";
           else { 
+              secret = sanitize(secret);
+              nid = sanitize(nid);
+
               mxlUri = "http://static.musescore.com/"+ nid + "/" + secret +"/score.mxl";
-              midiUri = "http://static.musescore.com/"+ nid + "/" + secret +"/score.mid"
-              syncUri = "http://api.musescore.com/services/rest/score/"+ nid +"/time.json?oauth_consumer_key=musichackday"
+              midiUri = "http://static.musescore.com/"+ nid + "/" + secret +"/score.mid";
+              syncUri = "http://api.musescore.com/services/rest/score/"+ nid +"/time.json?oauth_consumer_key=musichackday";
           }
         }
-        else if (mxlUri.charAt(mxlUri.length - 1) == '/')
-          mxlUri = mxlUri.substring(0, mxlUri.length - 1);
+        else 
+          mxlUri = sanitize(mxlUri);
         console.log(mxlUri);
 
         var xhr = new XMLHttpRequest();
